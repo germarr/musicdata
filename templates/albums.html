@@ -640,10 +640,17 @@
                 return;
             }
             
-            albumsInfo.textContent = `${data.albums.length} album${data.albums.length !== 1 ? 's' : ''} found`;
+            // Sort albums by release date in descending order (newest first)
+            const sortedAlbums = data.albums.sort((a, b) => {
+                const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
+                const dateB = b.release_date ? new Date(b.release_date).getTime() : 0;
+                return dateB - dateA; // Descending order (newest first)
+            });
+            
+            albumsInfo.textContent = `${sortedAlbums.length} album${sortedAlbums.length !== 1 ? 's' : ''} found`;
             albumsGrid.innerHTML = '';
             
-            data.albums.forEach(album => {
+            sortedAlbums.forEach(album => {
                 const card = document.createElement('div');
                 card.className = 'album-card';
                 
