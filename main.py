@@ -417,7 +417,7 @@ async def collect_all_artist_tracks(artist_id: str, db: Session = Depends(get_se
     """
     try:
         # Fetch all albums for this artist
-        albums = await search_albums_by_artist(int(artist_id), limit=50)
+        albums = await search_albums_by_artist(int(artist_id), limit=150)
         
         if not albums:
             return {
@@ -553,10 +553,13 @@ async def get_all_cached_artists(db: Session = Depends(get_session)) -> CachedAr
 
 @app.get("/api/artists-with-track-counts")
 async def get_artists_with_track_counts(db: Session = Depends(get_session)):
-    """Get all artists with their collected track counts and albums"""
+    """Get all artists with their collected track counts and albums with global metrics"""
     cached = get_cached_artists(db)
     
     artists_data = []
+    total_duration_ms = 0
+    total_albums_set = set()
+    
     for artist in cached:
         # Get all albums for this artist
         albums = db.exec(
@@ -568,6 +571,15 @@ async def get_artists_with_track_counts(db: Session = Depends(get_session)):
             select(func.count(Track.id)).where(Track.artist_id == artist.artist_id)
         ).first()
         
+        # Get duration for this artist
+        tracks_for_artist = db.exec(
+            select(Track).where(Track.artist_id == artist.artist_id)
+        ).all()
+        
+        for track in tracks_for_artist:
+            total_duration_ms += track.track_duration_ms
+            total_albums_set.add(track.collection_id)
+        
         artists_data.append({
             "artist_id": artist.artist_id,
             "artist_name": artist.artist_name,
@@ -576,27 +588,41 @@ async def get_artists_with_track_counts(db: Session = Depends(get_session)):
             "updated_at": artist.updated_at.isoformat(),
         })
     
+    total_tracks = sum(a["track_count"] for a in artists_data)
+    avg_duration_ms = int(total_duration_ms / total_tracks) if total_tracks > 0 else 0
+    
     return {
         "artists": artists_data,
         "total_artists": len(artists_data),
-        "total_tracks": sum(a["track_count"] for a in artists_data),
+        "total_tracks": total_tracks,
+        "total_albums": len(total_albums_set),
+        "avg_duration_ms": avg_duration_ms,
     }
 
 
 @app.get("/api/tracks/{artist_id}")
 async def get_artist_all_tracks(artist_id: str, db: Session = Depends(get_session)):
-    """Get all tracks for an artist grouped by album"""
+    """Get all tracks for an artist grouped by album with artist-specific metrics"""
     statement = select(Track).where(Track.artist_id == artist_id).order_by(
         Track.collection_id, Track.track_number
     )
     tracks = db.exec(statement).all()
     
     if not tracks:
-        return {"artist_id": artist_id, "albums": [], "total_tracks": 0}
+        return {
+            "artist_id": artist_id,
+            "albums": [],
+            "total_tracks": 0,
+            "total_albums": 0,
+            "avg_duration_ms": 0,
+        }
     
     # Group tracks by album
     albums_dict = {}
+    total_duration_ms = 0
+    
     for track in tracks:
+        total_duration_ms += track.track_duration_ms
         if track.collection_id not in albums_dict:
             albums_dict[track.collection_id] = {
                 "collection_id": track.collection_id,
@@ -615,10 +641,15 @@ async def get_artist_all_tracks(artist_id: str, db: Session = Depends(get_sessio
             "release_date": track.release_date or "",
         })
     
+    # Calculate average duration
+    avg_duration_ms = int(total_duration_ms / len(tracks)) if tracks else 0
+    
     return {
         "artist_id": artist_id,
         "albums": list(albums_dict.values()),
         "total_tracks": len(tracks),
+        "total_albums": len(albums_dict),
+        "avg_duration_ms": avg_duration_ms,
     }
 
 
