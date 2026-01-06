@@ -4,13 +4,13 @@ from typing import List, Dict, Any
 ITUNES_API_BASE = "https://itunes.apple.com"
 
 
-async def search_artists(artist_name: str, limit: int = 50) -> List[Dict[str, Any]]:
+async def search_artists(artist_name: str, limit: int = 200) -> List[Dict[str, Any]]:
     """
     Search for artists on iTunes API
     
     Args:
         artist_name: Name of the artist to search for
-        limit: Maximum number of results (default 50)
+        limit: Maximum number of results (default 200)
     
     Returns:
         List of unique artist results from iTunes API
