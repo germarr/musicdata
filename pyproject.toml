@@ -15,5 +15,6 @@ dependencies = [
     "uvicorn>=0.40.0",
     "sqlmodel>=0.0.14",
     "httpx>=0.25.0",
+    "marimo[standard]>=0.18.4",
 ]
 

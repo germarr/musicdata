@@ -340,7 +340,7 @@
                 const timeStr = date.toLocaleTimeString();
                 
                 card.innerHTML = `
-                    <div class="artist-name">${escapeHtml(artist.artist_name || 'Unknown Artist')}</div>
+                    <div class="artist-name">${escapeHtml(artist.artist_name?.trim() || 'Unknown Artist')}</div>
                     <div class="artist-meta">Artist ID: ${artist.artist_id}</div>
                     <div class="artist-meta">Last Updated: ${dateStr} at ${timeStr}</div>
                     ${artist.tracks_collected ? 
@@ -348,12 +348,27 @@
                         `<div class="artist-status"><span class="status-icon" style="background: #ccc;"></span>○ No Tracks Collected</div>`
                     }
                     <div class="artist-actions">
-                        <button class="artist-btn" onclick="viewArtistAlbums('${artist.artist_id}', '${escapeHtml(artist.artist_name).replace(/'/g, "\\'")}')">View Albums</button>
-                        <button class="artist-btn secondary" onclick="removeArtist('${artist.artist_id}')">Remove</button>
+                        <button class="artist-btn view-albums-btn" data-artist-id="${artist.artist_id}" data-artist-name="${escapeHtml(artist.artist_name)}">View Albums</button>
+                        <button class="artist-btn secondary remove-artist-btn" data-artist-id="${artist.artist_id}">Remove</button>
                     </div>
                 `;
                 
                 artistsGrid.appendChild(card);
+                
+                // Add event listeners to buttons
+                const viewBtn = card.querySelector('.view-albums-btn');
+                const removeBtn = card.querySelector('.remove-artist-btn');
+                
+                viewBtn.addEventListener('click', function() {
+                    const artistId = this.getAttribute('data-artist-id');
+                    const artistName = this.getAttribute('data-artist-name');
+                    viewArtistAlbums(artistId, artistName);
+                });
+                
+                removeBtn.addEventListener('click', function() {
+                    const artistId = this.getAttribute('data-artist-id');
+                    removeArtist(artistId);
+                });
             });
             
             artistsContent.style.display = 'block';
@@ -362,7 +377,9 @@
         function viewArtistAlbums(artistId, artistName) {
             sessionStorage.setItem('selectedArtistId', artistId);
             sessionStorage.setItem('selectedArtistName', artistName);
-            window.location.href = '/albums';
+            setTimeout(() => {
+                window.location.href = '/albums';
+            }, 100);
         }
         
         function removeArtist(artistId) {
