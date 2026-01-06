@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collected Artists - iTunes Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        nav {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 0 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+        
+        nav .logo {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        nav .logo:hover {
+            color: #667eea;
+        }
+        
+        nav .nav-links {
+            display: flex;
+            gap: 20px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        nav .nav-links a {
+            text-decoration: none;
+            color: #666;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        nav .nav-links a:hover {
+            color: #667eea;
+        }
+        
+        nav .nav-links a.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 3px;
+        }
+        
+        main {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 40px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .loading {
+            display: block;
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .artists-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .artist-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #f0f4f8 100%);
+            border-radius: 8px;
+            padding: 25px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .artist-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .artist-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .artist-meta {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .artist-status {
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 500;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-icon {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+        }
+        
+        .artist-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+        }
+        
+        .artist-btn {
+            flex: 1;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .artist-btn:hover {
+            background: #764ba2;
+        }
+        
+        .artist-btn.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .artist-btn.secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        .no-artists {
+            text-align: center;
+            color: #999;
+            padding: 60px 20px;
+            font-size: 16px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 22px;
+            }
+            
+            .artists-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-content">
+            <a href="/" class="logo">🎵 iTunes Search</a>
+            <ul class="nav-links">
+                <li><a href="/">Search</a></li>
+                <li><a href="/collected-artists" class="active">Collected Artists</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main>
+        <div class="container">
+            <h1>🎸 Collected Artists</h1>
+            <p class="subtitle">Artists whose tracks have been collected and cached</p>
+            
+            <div class="error" id="errorMessage"></div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Loading artists...</p>
+            </div>
+            
+            <div id="artistsContent" style="display: none;">
+                <div class="artists-grid" id="artistsGrid"></div>
+            </div>
+            
+            <div id="noArtists" class="no-artists" style="display: none;">
+                No collected artists yet. Go to the search page and collect some artists!
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        let artists = [];
+        
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadCollectedArtists();
+        });
+        
+        async function loadCollectedArtists() {
+            const loading = document.getElementById('loading');
+            const artistsContent = document.getElementById('artistsContent');
+            const noArtists = document.getElementById('noArtists');
+            
+            loading.style.display = 'block';
+            artistsContent.style.display = 'none';
+            noArtists.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/cached-artists');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                artists = data.artists || [];
+                displayArtists();
+            } catch (error) {
+                showError(`Error loading artists: ${error.message}`);
+                console.error(error);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        function displayArtists() {
+            const artistsContent = document.getElementById('artistsContent');
+            const noArtists = document.getElementById('noArtists');
+            const artistsGrid = document.getElementById('artistsGrid');
+            
+            if (!artists || artists.length === 0) {
+                noArtists.style.display = 'block';
+                return;
+            }
+            
+            artistsGrid.innerHTML = '';
+            
+            artists.forEach(artist => {
+                const card = document.createElement('div');
+                card.className = 'artist-card';
+                
+                const date = new Date(artist.updated_at);
+                const dateStr = date.toLocaleDateString();
+                const timeStr = date.toLocaleTimeString();
+                
+                card.innerHTML = `
+                    <div class="artist-name">${escapeHtml(artist.artist_name || 'Unknown Artist')}</div>
+                    <div class="artist-meta">Artist ID: ${artist.artist_id}</div>
+                    <div class="artist-meta">Last Updated: ${dateStr} at ${timeStr}</div>
+                    ${artist.tracks_collected ? 
+                        `<div class="artist-status"><span class="status-icon"></span>✓ Tracks Collected</div>` : 
+                        `<div class="artist-status"><span class="status-icon" style="background: #ccc;"></span>○ No Tracks Collected</div>`
+                    }
+                    <div class="artist-actions">
+                        <button class="artist-btn" onclick="viewArtistAlbums('${artist.artist_id}', '${escapeHtml(artist.artist_name).replace(/'/g, "\\'")}')">View Albums</button>
+                        <button class="artist-btn secondary" onclick="removeArtist('${artist.artist_id}')">Remove</button>
+                    </div>
+                `;
+                
+                artistsGrid.appendChild(card);
+            });
+            
+            artistsContent.style.display = 'block';
+        }
+        
+        function viewArtistAlbums(artistId, artistName) {
+            sessionStorage.setItem('selectedArtistId', artistId);
+            sessionStorage.setItem('selectedArtistName', artistName);
+            window.location.href = '/albums';
+        }
+        
+        function removeArtist(artistId) {
+            if (confirm('Are you sure you want to remove this artist?')) {
+                artists = artists.filter(a => a.artist_id !== artistId);
+                displayArtists();
+                // In the future, could add API endpoint to delete from database
+            }
+        }
+        
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.classList.add('active');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

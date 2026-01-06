@@ -15,6 +15,71 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        nav {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 0 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+        
+        nav .logo {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        nav .logo:hover {
+            color: #667eea;
+        }
+        
+        nav .nav-links {
+            display: flex;
+            gap: 20px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        nav .nav-links a {
+            text-decoration: none;
+            color: #666;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        nav .nav-links a:hover {
+            color: #667eea;
+        }
+        
+        nav .nav-links a.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 3px;
+        }
+        
+        main {
+            flex: 1;
             padding: 20px;
             display: flex;
             justify-content: center;
@@ -257,85 +322,6 @@
             background: #764ba2;
         }
         
-        .cached-artists-section {
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 1px solid #e0e0e0;
-        }
-        
-        .cached-artists-section h2 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .cached-artists-section.empty {
-            display: none;
-        }
-        
-        .cached-artists-list {
-            list-style: none;
-        }
-        
-        .cached-artist-item {
-            padding: 15px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #f0f4f8 100%);
-            border-radius: 6px;
-            margin-bottom: 10px;
-            border-left: 4px solid #667eea;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .cached-artist-item:hover {
-            transform: translateX(2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        
-        .cached-artist-info {
-            flex: 1;
-        }
-        
-        .cached-artist-name {
-            font-weight: 600;
-            color: #333;
-            font-size: 14px;
-        }
-        
-        .cached-artist-meta {
-            font-size: 12px;
-            color: #666;
-            margin-top: 4px;
-        }
-        
-        .cached-artist-actions {
-            display: flex;
-            gap: 8px;
-            margin-left: 10px;
-        }
-        
-        .cached-artist-btn {
-            padding: 6px 12px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            white-space: nowrap;
-        }
-        
-        .cached-artist-btn:hover {
-            background: #764ba2;
-        }
-        
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -362,9 +348,20 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎵 iTunes Artist Search</h1>
-        <p class="subtitle">Search for your favorite artists and discover all the details</p>
+    <nav>
+        <div class="nav-content">
+            <a href="/" class="logo">🎵 iTunes Search</a>
+            <ul class="nav-links">
+                <li><a href="/" class="active">Search</a></li>
+                <li><a href="/collected-artists">Collected Artists</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main>
+        <div class="container">
+            <h1>🎵 iTunes Artist Search</h1>
+            <p class="subtitle">Search for your favorite artists and discover all the details</p>
         
         <div class="error" id="errorMessage"></div>
         
@@ -410,12 +407,6 @@
         <div class="history-section" id="historySection" style="display: none;">
             <h2>📜 Your Search History</h2>
             <ul class="history-list" id="historyList"></ul>
-        </div>
-        
-        <div class="cached-artists-section empty" id="cachedArtistsSection">
-            <h2>🎸 Collected Artists</h2>
-            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Artists whose tracks have been collected and cached</p>
-            <ul class="cached-artists-list" id="cachedArtistsList"></ul>
         </div>
     </div>
     
@@ -571,63 +562,10 @@
             return div.innerHTML;
         }
         
-        async function loadCachedArtists() {
-            const cachedArtistsSection = document.getElementById('cachedArtistsSection');
-            const cachedArtistsList = document.getElementById('cachedArtistsList');
-            
-            try {
-                const response = await fetch('/api/cached-artists');
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
-                const data = await response.json();
-                displayCachedArtists(data.artists, cachedArtistsList, cachedArtistsSection);
-            } catch (error) {
-                console.error('Error loading cached artists:', error);
-            }
-        }
-        
-        function displayCachedArtists(artists, list, section) {
-            if (!artists || artists.length === 0) {
-                section.classList.add('empty');
-                return;
-            }
-            
-            section.classList.remove('empty');
-            list.innerHTML = '';
-            
-            artists.forEach(artist => {
-                const li = document.createElement('li');
-                li.className = 'cached-artist-item';
-                
-                const date = new Date(artist.updated_at);
-                const dateStr = date.toLocaleDateString();
-                const status = artist.tracks_collected ? '✓ Tracks Collected' : '○ Tracks Not Collected';
-                
-                li.innerHTML = `
-                    <div class="cached-artist-info">
-                        <div class="cached-artist-name">${escapeHtml(artist.artist_name || 'Artist')}</div>
-                        <div class="cached-artist-meta">ID: ${artist.artist_id} • ${status} • Updated: ${dateStr}</div>
-                    </div>
-                    <div class="cached-artist-actions">
-                        <button class="cached-artist-btn" onclick="viewArtistAlbums('${artist.artist_id}', '${escapeHtml(artist.artist_name).replace(/'/g, "\\'")}')">View Albums</button>
-                    </div>
-                `;
-                
-                list.appendChild(li);
-            });
-        }
-        
-        function viewArtistAlbums(artistId, artistName) {
-            sessionStorage.setItem('selectedArtistId', artistId);
-            sessionStorage.setItem('selectedArtistName', artistName);
-            window.location.href = '/albums';
-        }
-        
-        // Load history and cached artists on page load
+        // Load history on page load
         loadHistory();
-        loadCachedArtists();
     </script>
+        </div>
+    </main>
 </body>
 </html>

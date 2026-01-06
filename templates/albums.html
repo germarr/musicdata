@@ -15,6 +15,71 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        nav {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 0 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+        
+        nav .logo {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        nav .logo:hover {
+            color: #667eea;
+        }
+        
+        nav .nav-links {
+            display: flex;
+            gap: 20px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        nav .nav-links a {
+            text-decoration: none;
+            color: #666;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        nav .nav-links a:hover {
+            color: #667eea;
+        }
+        
+        nav .nav-links a.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 3px;
+        }
+        
+        main {
+            flex: 1;
             padding: 20px;
         }
         
@@ -415,10 +480,21 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header" id="header">
-            <button class="back-button" onclick="goBack()">← Back</button>
+    <nav>
+        <div class="nav-content">
+            <a href="/" class="logo">🎵 iTunes Search</a>
+            <ul class="nav-links">
+                <li><a href="/">Search</a></li>
+                <li><a href="/collected-artists">Collected Artists</a></li>
+            </ul>
         </div>
+    </nav>
+    
+    <main>
+        <div class="container">
+            <div class="header" id="header">
+                <button class="back-button" onclick="goBack()">← Back</button>
+            </div>
         
         <div class="content">
             <div class="error" id="errorMessage"></div>
@@ -454,6 +530,8 @@
             <ul class="tracks-list" id="tracksList"></ul>
         </div>
     </div>
+        </div>
+    </main>
     
     <script>
         let artistId = null;

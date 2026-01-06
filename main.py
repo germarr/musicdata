@@ -225,6 +225,12 @@ async def get_albums_page(request: Request):
     return templates.TemplateResponse("albums.html", {"request": request})
 
 
+@app.get("/collected-artists")
+async def get_collected_artists_page(request: Request):
+    """Serve the collected artists page"""
+    return templates.TemplateResponse("collected-artists.html", {"request": request})
+
+
 @app.get("/api/albums/{artist_id}")
 async def get_artist_albums(artist_id: int) -> AlbumsResponse:
     """
@@ -336,8 +342,11 @@ async def collect_album_tracks(artist_id: str, collection_id: str, db: Session =
             total_tracks=0,
         )
     
-    # Get or create artist cache
-    get_or_create_artist_cache(db, artist_id, "")
+    # Extract artist name from track data
+    artist_name = tracks_data[0].get("artistName", "") if tracks_data else ""
+    
+    # Get or create artist cache with artist name
+    get_or_create_artist_cache(db, artist_id, artist_name)
     
     # Store tracks in database
     stored_tracks = []
@@ -371,7 +380,6 @@ async def collect_album_tracks(artist_id: str, collection_id: str, db: Session =
     
     # Get collection name from first track
     collection_name = tracks_data[0].get("collectionName", "Unknown") if tracks_data else "Unknown"
-    artist_name = tracks_data[0].get("artistName", "") if tracks_data else ""
     
     return AlbumTracksResponse(
         collection_id=collection_id,
