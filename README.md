@@ -342,7 +342,7 @@ Collect and store all detailed tracks from all albums for an artist with dedupli
 ### 1. Artist Search
 - Queries iTunes API with artist name
 - Filters for artist-type results only
-- Returns up to 50 results per search
+- Returns up to 200 results per search (deduped by artist ID)
 
 ### 2. Album Discovery
 - Fetches all albums for a selected artist
