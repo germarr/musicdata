@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select, func
 from datetime import datetime, timedelta
+from typing import Optional
 from pydantic import BaseModel
 import uuid
 import os
@@ -18,11 +19,21 @@ from database import (
     Result,
     ArtistCache,
     Track,
+    GameSession,
+    GameMatch,
     engine,
     is_artist_cached,
     get_cached_artists,
     get_artist_tracks,
     get_or_create_artist_cache,
+    get_all_artist_tracks,
+    create_game_session,
+    get_game_session,
+    create_game_match,
+    record_match_winner,
+    get_game_matches,
+    get_all_game_matches,
+    finish_game_session,
 )
 from itunes_client import (
     search_artists,
@@ -108,10 +119,50 @@ class CachedArtist(BaseModel):
     artist_name: str
     tracks_collected: bool
     updated_at: datetime
+    artwork_url: Optional[str] = None
 
 
 class CachedArtistsResponse(BaseModel):
     artists: list[CachedArtist]
+
+
+class GameTrack(BaseModel):
+    track_id: str
+    track_name: str
+    artwork_url_600: str
+    preview_url: Optional[str] = None
+
+
+class GameMatchResponse(BaseModel):
+    match_id: int
+    round_number: int
+    match_number: int
+    track_1: GameTrack
+    track_2: GameTrack
+
+
+class GameStartResponse(BaseModel):
+    game_id: str
+    artist_id: str
+    matches: list[GameMatchResponse]
+    round_number: int = 1
+
+
+class GameMatchResultRequest(BaseModel):
+    game_id: str
+    match_id: int
+    winner_track_id: str
+
+
+class GameResultsResponse(BaseModel):
+    game_id: str
+    status: str
+    winner_track_id: str
+    winner_track_name: str
+    winner_artwork_url: str
+    winner_preview_url: Optional[str] = None
+    dismissed_tracks: list[GameTrack]
+    created_at: datetime
 
 
 def get_session_id(request: Request) -> str:
@@ -235,6 +286,12 @@ async def get_collected_artists_page(request: Request):
 async def get_collected_tracks_page(request: Request):
     """Serve the collected tracks page"""
     return templates.TemplateResponse("collected-tracks.html", {"request": request})
+
+
+@app.get("/game")
+async def get_game_page(request: Request):
+    """Serve the game page"""
+    return templates.TemplateResponse("game.html", {"request": request})
 
 
 @app.get("/api/albums/{artist_id}")
@@ -535,20 +592,30 @@ async def collect_all_artist_tracks(artist_id: str, db: Session = Depends(get_se
 
 @app.get("/api/cached-artists")
 async def get_all_cached_artists(db: Session = Depends(get_session)) -> CachedArtistsResponse:
-    """Get all artists with collected track data"""
+    """Get all artists with collected track data and artwork"""
     cached = get_cached_artists(db)
     
-    return CachedArtistsResponse(
-        artists=[
+    artists_list = []
+    for artist in cached:
+        # Get first track's artwork for this artist
+        artwork_url = None
+        first_track = db.exec(
+            select(Track.artwork_url_600).where(Track.artist_id == artist.artist_id).limit(1)
+        ).first()
+        if first_track:
+            artwork_url = first_track
+        
+        artists_list.append(
             CachedArtist(
                 artist_id=artist.artist_id,
                 artist_name=artist.artist_name,
                 tracks_collected=artist.tracks_collected,
                 updated_at=artist.updated_at,
+                artwork_url=artwork_url,
             )
-            for artist in cached
-        ]
-    )
+        )
+    
+    return CachedArtistsResponse(artists=artists_list)
 
 
 @app.get("/api/artists-with-track-counts")
@@ -651,6 +718,227 @@ async def get_artist_all_tracks(artist_id: str, db: Session = Depends(get_sessio
         "total_albums": len(albums_dict),
         "avg_duration_ms": avg_duration_ms,
     }
+
+
+@app.post("/api/game/start/{artist_id}")
+async def start_game(
+    artist_id: str,
+    request: Request,
+    db: Session = Depends(get_session),
+):
+    """
+    Start a new bracket game for an artist
+    Retrieves all collected tracks and creates the initial bracket (Round 1 with 8 matches)
+    """
+    session_id = get_session_id(request)
+    
+    # Get all tracks for the artist
+    all_tracks = get_all_artist_tracks(db, artist_id)
+    
+    if len(all_tracks) < 2:
+        return {
+            "error": "Need at least 2 tracks to start a game",
+            "available_tracks": len(all_tracks),
+        }
+    
+    # Create game session
+    game = create_game_session(db, session_id, artist_id)
+    
+    # Shuffle tracks and take up to 8 for the first round
+    import random
+    shuffled_tracks = random.sample(all_tracks, min(len(all_tracks), 8))
+    
+    # Create initial matches (Round 1)
+    matches = []
+    for i in range(0, len(shuffled_tracks), 2):
+        track_1 = shuffled_tracks[i]
+        track_2 = shuffled_tracks[i + 1] if i + 1 < len(shuffled_tracks) else shuffled_tracks[0]
+        
+        match = create_game_match(
+            db,
+            game.game_id,
+            round_number=1,
+            match_number=len(matches) + 1,
+            track_1=track_1,
+            track_2=track_2,
+        )
+        
+        matches.append(
+            GameMatchResponse(
+                match_id=match.id,
+                round_number=match.round_number,
+                match_number=match.match_number,
+                track_1=GameTrack(
+                    track_id=match.track_id_1,
+                    track_name=match.track_name_1,
+                    artwork_url_600=match.artwork_url_1,
+                    preview_url=track_1.preview_url,
+                ),
+                track_2=GameTrack(
+                    track_id=match.track_id_2,
+                    track_name=match.track_name_2,
+                    artwork_url_600=match.artwork_url_2,
+                    preview_url=track_2.preview_url,
+                ),
+            )
+        )
+    
+    return GameStartResponse(
+        game_id=game.game_id,
+        artist_id=artist_id,
+        matches=matches,
+        round_number=1,
+    )
+
+
+@app.post("/api/game/match-result")
+async def record_match(
+    result: GameMatchResultRequest,
+    db: Session = Depends(get_session),
+):
+    """
+    Record the result of a match and determine next matches
+    If all matches in a round are complete, generates next round
+    """
+    # Record the winner
+    match = record_match_winner(db, result.game_id, result.match_id, result.winner_track_id)
+    
+    if not match:
+        return {"error": "Match not found"}
+    
+    # Get the game
+    game = get_game_session(db, result.game_id)
+    if not game:
+        return {"error": "Game not found"}
+    
+    # Get all matches for current round
+    round_matches = get_game_matches(db, result.game_id, match.round_number)
+    
+    # Check if all matches in this round are complete
+    all_complete = all(m.winner_track_id for m in round_matches)
+    
+    if not all_complete:
+        return {
+            "game_id": result.game_id,
+            "status": "round_in_progress",
+            "current_round": match.round_number,
+        }
+    
+    # Determine if game is complete
+    if len(round_matches) == 1:
+        # This was the final match - game is complete
+        finish_game_session(db, result.game_id, result.winner_track_id)
+        return {
+            "game_id": result.game_id,
+            "status": "completed",
+            "winner_track_id": result.winner_track_id,
+        }
+    
+    # Create next round matches
+    next_round_number = match.round_number + 1
+    winners = [m.winner_track_id for m in round_matches]
+    
+    # Get winner track details
+    statement = select(Track).where(Track.track_id.in_(winners))
+    winner_tracks_dict = {t.track_id: t for t in db.exec(statement).all()}
+    winner_tracks = [winner_tracks_dict[wid] for wid in winners if wid in winner_tracks_dict]
+    
+    # Create matches for next round
+    next_matches = []
+    for i in range(0, len(winner_tracks), 2):
+        track_1 = winner_tracks[i]
+        track_2 = winner_tracks[i + 1] if i + 1 < len(winner_tracks) else winner_tracks[0]
+        
+        next_match = create_game_match(
+            db,
+            result.game_id,
+            round_number=next_round_number,
+            match_number=len(next_matches) + 1,
+            track_1=track_1,
+            track_2=track_2,
+        )
+        
+        next_matches.append(
+            GameMatchResponse(
+                match_id=next_match.id,
+                round_number=next_match.round_number,
+                match_number=next_match.match_number,
+                track_1=GameTrack(
+                    track_id=next_match.track_id_1,
+                    track_name=next_match.track_name_1,
+                    artwork_url_600=next_match.artwork_url_1,
+                    preview_url=track_1.preview_url,
+                ),
+                track_2=GameTrack(
+                    track_id=next_match.track_id_2,
+                    track_name=next_match.track_name_2,
+                    artwork_url_600=next_match.artwork_url_2,
+                    preview_url=track_2.preview_url,
+                ),
+            )
+        )
+    
+    return {
+        "game_id": result.game_id,
+        "status": "next_round",
+        "current_round": next_round_number,
+        "matches": next_matches,
+    }
+
+
+@app.get("/api/game/results/{game_id}")
+async def get_game_results(game_id: str, db: Session = Depends(get_session)):
+    """
+    Get the final results of a completed game
+    Returns winner and all dismissed (losing) tracks
+    """
+    game = get_game_session(db, game_id)
+    
+    if not game:
+        return {"error": "Game not found"}
+    
+    if game.status != "completed":
+        return {"error": "Game is not completed"}
+    
+    # Get all matches
+    all_matches = get_all_game_matches(db, game_id)
+    
+    # Collect all dismissed track IDs
+    dismissed_ids = [m.loser_track_id for m in all_matches if m.loser_track_id]
+    
+    # Get dismissed track details
+    dismissed_tracks = []
+    if dismissed_ids:
+        statement = select(Track).where(Track.track_id.in_(dismissed_ids))
+        tracks = db.exec(statement).all()
+        dismissed_tracks = [
+            GameTrack(
+                track_id=t.track_id,
+                track_name=t.track_name,
+                artwork_url_600=t.artwork_url_600 or "",
+                preview_url=t.preview_url,
+            )
+            for t in tracks
+        ]
+    
+    # Get winner preview URL
+    winner_preview_url = None
+    if game.winner_track_id:
+        statement = select(Track).where(Track.track_id == game.winner_track_id)
+        winner_track = db.exec(statement).first()
+        if winner_track:
+            winner_preview_url = winner_track.preview_url
+    
+    return GameResultsResponse(
+        game_id=game.game_id,
+        status=game.status,
+        winner_track_id=game.winner_track_id or "",
+        winner_track_name=game.winner_track_name or "",
+        winner_artwork_url=game.winner_artwork_url or "",
+        winner_preview_url=winner_preview_url,
+        dismissed_tracks=dismissed_tracks,
+        created_at=game.created_at,
+    )
 
 
 

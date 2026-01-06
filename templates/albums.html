@@ -290,9 +290,10 @@
         
         .progress-label {
             font-size: 14px;
-            color: #333;
-            margin-bottom: 10px;
+            color: #667eea;
+            margin-top: 15px;
             font-weight: 600;
+            text-align: center;
         }
         
         .progress-bar {
@@ -301,6 +302,7 @@
             background: #e0e0e0;
             border-radius: 4px;
             overflow: hidden;
+            display: none;
         }
         
         .progress-fill {
@@ -487,6 +489,7 @@
                 <li><a href="/">Search</a></li>
                 <li><a href="/collected-artists">Collected Artists</a></li>
                 <li><a href="/collected-tracks">Collected Tracks</a></li>
+                <li><a href="/game">🎮 Game</a></li>
             </ul>
         </div>
     </nav>
@@ -505,10 +508,8 @@
             </div>
             
             <div class="progress-container" id="progressContainer">
+                <div class="spinner"></div>
                 <div class="progress-label" id="progressLabel">Collecting track data...</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
             </div>
             
             <div id="albumsContent" style="display: none;">
@@ -567,7 +568,6 @@
             const loading = document.getElementById('loading');
             const progressContainer = document.getElementById('progressContainer');
             const progressLabel = document.getElementById('progressLabel');
-            const progressFill = document.getElementById('progressFill');
             const albumsContent = document.getElementById('albumsContent');
             const noAlbums = document.getElementById('noAlbums');
             
@@ -597,7 +597,6 @@
                 loading.classList.remove('active');
                 progressContainer.classList.add('active');
                 progressLabel.textContent = `Collecting tracks from ${currentAlbums.length} album${currentAlbums.length !== 1 ? 's' : ''}...`;
-                progressFill.style.width = '0%';
                 
                 // Make the collection request
                 const collectResponse = await fetch(`/api/collect-all-artist-tracks/${artistId}`, {
@@ -610,8 +609,7 @@
                 
                 const collectData = await collectResponse.json();
                 
-                // Update progress to 100%
-                progressFill.style.width = '100%';
+                // Update progress message
                 progressLabel.textContent = `Collection complete! (${collectData.total_tracks_collected} new tracks)`;
                 
                 // Wait a moment to show completion
@@ -686,30 +684,15 @@
         
         async function viewTracks(collectionId, collectionName) {
             const progressContainer = document.getElementById('progressContainer');
-            const progressFill = document.getElementById('progressFill');
             const progressLabel = document.getElementById('progressLabel');
             
             progressContainer.classList.add('active');
-            progressFill.style.width = '0%';
+            progressLabel.textContent = `Collecting track data from "${collectionName}"...`;
             
             try {
-                // Simulate progress while fetching
-                let progress = 0;
-                const progressInterval = setInterval(() => {
-                    if (progress < 90) {
-                        progress += Math.random() * 30;
-                        progressFill.style.width = Math.min(progress, 90) + '%';
-                    }
-                }, 100);
-                
-                progressLabel.textContent = `Collecting track data from "${collectionName}"...`;
-                
                 const response = await fetch(`/api/collect-album-tracks/${artistId}/${collectionId}`, {
                     method: 'POST',
                 });
-                
-                clearInterval(progressInterval);
-                progressFill.style.width = '100%';
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);

@@ -155,16 +155,25 @@
         .artist-card {
             background: linear-gradient(135deg, #f5f7fa 0%, #f0f4f8 100%);
             border-radius: 8px;
-            padding: 25px;
+            padding: 20px;
             border-left: 4px solid #667eea;
             transition: transform 0.2s, box-shadow 0.2s;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         
         .artist-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .artist-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 15px;
         }
         
         .artist-name {
@@ -260,6 +269,7 @@
                 <li><a href="/">Search</a></li>
                 <li><a href="/collected-artists" class="active">Collected Artists</a></li>
                 <li><a href="/collected-tracks">Collected Tracks</a></li>
+                <li><a href="/game">🎮 Game</a></li>
             </ul>
         </div>
     </nav>
@@ -341,6 +351,7 @@
                 const timeStr = date.toLocaleTimeString();
                 
                 card.innerHTML = `
+                    ${artist.artwork_url ? `<img src="${artist.artwork_url}" alt="${artist.artist_name}" class="artist-image">` : ''}
                     <div class="artist-name">${escapeHtml(artist.artist_name?.trim() || 'Unknown Artist')}</div>
                     <div class="artist-meta">Artist ID: ${artist.artist_id}</div>
                     <div class="artist-meta">Last Updated: ${dateStr} at ${timeStr}</div>
@@ -350,25 +361,18 @@
                     }
                     <div class="artist-actions">
                         <button class="artist-btn view-albums-btn" data-artist-id="${artist.artist_id}" data-artist-name="${escapeHtml(artist.artist_name)}">View Albums</button>
-                        <button class="artist-btn secondary remove-artist-btn" data-artist-id="${artist.artist_id}">Remove</button>
                     </div>
                 `;
                 
                 artistsGrid.appendChild(card);
                 
-                // Add event listeners to buttons
+                // Add event listener to button
                 const viewBtn = card.querySelector('.view-albums-btn');
-                const removeBtn = card.querySelector('.remove-artist-btn');
                 
                 viewBtn.addEventListener('click', function() {
                     const artistId = this.getAttribute('data-artist-id');
                     const artistName = this.getAttribute('data-artist-name');
                     viewArtistAlbums(artistId, artistName);
-                });
-                
-                removeBtn.addEventListener('click', function() {
-                    const artistId = this.getAttribute('data-artist-id');
-                    removeArtist(artistId);
                 });
             });
             
@@ -381,14 +385,6 @@
             setTimeout(() => {
                 window.location.href = '/albums';
             }, 100);
-        }
-        
-        function removeArtist(artistId) {
-            if (confirm('Are you sure you want to remove this artist?')) {
-                artists = artists.filter(a => a.artist_id !== artistId);
-                displayArtists();
-                // In the future, could add API endpoint to delete from database
-            }
         }
         
         function showError(message) {

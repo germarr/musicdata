@@ -80,6 +80,42 @@ class Track(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class GameSession(SQLModel, table=True):
+    """Game session for bracket tournament"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    game_id: str = Field(index=True, unique=True)
+    user_session_id: str = Field(foreign_key="usersession.session_id", index=True)
+    artist_id: str = Field(index=True)
+    status: str = Field(default="active")  # active, completed
+    winner_track_id: Optional[str] = None
+    winner_track_name: Optional[str] = None
+    winner_artwork_url: Optional[str] = None
+    total_rounds: int = Field(default=3)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    matches: list["GameMatch"] = Relationship(back_populates="game_session")
+
+
+class GameMatch(SQLModel, table=True):
+    """Individual match in the bracket"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    game_session_id: str = Field(foreign_key="gamesession.game_id", index=True)
+    round_number: int = Field(index=True)
+    match_number: int
+    track_id_1: str
+    track_name_1: str
+    artwork_url_1: str
+    track_id_2: str
+    track_name_2: str
+    artwork_url_2: str
+    winner_track_id: Optional[str] = None
+    loser_track_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    game_session: Optional[GameSession] = Relationship(back_populates="matches")
+
+
 def create_db_and_tables():
     """Create database and tables"""
     SQLModel.metadata.create_all(engine)
@@ -154,3 +190,129 @@ def get_artist_tracks(db_session: Session, artist_id: str, collection_id: str) -
         Track.collection_id == collection_id
     ).order_by(Track.track_number)
     return db_session.exec(statement).all()
+
+
+def get_all_artist_tracks(db_session: Session, artist_id: str) -> list[Track]:
+    """Get all tracks for an artist (across all albums)"""
+    statement = select(Track).where(Track.artist_id == artist_id).order_by(Track.track_number)
+    return db_session.exec(statement).all()
+
+
+def create_game_session(db_session: Session, user_session_id: str, artist_id: str) -> GameSession:
+    """Create a new game session"""
+    game_session = GameSession(
+        game_id=str(uuid.uuid4()),
+        user_session_id=user_session_id,
+        artist_id=artist_id,
+    )
+    db_session.add(game_session)
+    db_session.commit()
+    db_session.refresh(game_session)
+    return game_session
+
+
+def get_game_session(db_session: Session, game_id: str) -> Optional[GameSession]:
+    """Get a game session by ID"""
+    statement = select(GameSession).where(GameSession.game_id == game_id)
+    return db_session.exec(statement).first()
+
+
+def create_game_match(
+    db_session: Session,
+    game_id: str,
+    round_number: int,
+    match_number: int,
+    track_1: Track,
+    track_2: Track,
+) -> GameMatch:
+    """Create a match in the bracket"""
+    match = GameMatch(
+        game_session_id=game_id,
+        round_number=round_number,
+        match_number=match_number,
+        track_id_1=track_1.track_id,
+        track_name_1=track_1.track_name,
+        artwork_url_1=track_1.artwork_url_600 or "",
+        track_id_2=track_2.track_id,
+        track_name_2=track_2.track_name,
+        artwork_url_2=track_2.artwork_url_600 or "",
+    )
+    db_session.add(match)
+    db_session.commit()
+    db_session.refresh(match)
+    return match
+
+
+def record_match_winner(
+    db_session: Session,
+    game_id: str,
+    match_id: int,
+    winner_track_id: str,
+) -> Optional[GameMatch]:
+    """Record the winner of a match"""
+    statement = select(GameMatch).where(GameMatch.id == match_id)
+    match = db_session.exec(statement).first()
+    
+    if match:
+        match.winner_track_id = winner_track_id
+        # Determine loser
+        match.loser_track_id = (
+            match.track_id_2 if winner_track_id == match.track_id_1
+            else match.track_id_1
+        )
+        db_session.add(match)
+        db_session.commit()
+        db_session.refresh(match)
+    
+    return match
+
+
+def get_game_matches(db_session: Session, game_id: str, round_number: int) -> list[GameMatch]:
+    """Get all matches for a specific round"""
+    statement = (
+        select(GameMatch)
+        .where(
+            GameMatch.game_session_id == game_id,
+            GameMatch.round_number == round_number,
+        )
+        .order_by(GameMatch.match_number)
+    )
+    return db_session.exec(statement).all()
+
+
+def get_all_game_matches(db_session: Session, game_id: str) -> list[GameMatch]:
+    """Get all matches for a game"""
+    statement = (
+        select(GameMatch)
+        .where(GameMatch.game_session_id == game_id)
+        .order_by(GameMatch.round_number, GameMatch.match_number)
+    )
+    return db_session.exec(statement).all()
+
+
+def finish_game_session(
+    db_session: Session,
+    game_id: str,
+    winner_track_id: str,
+) -> Optional[GameSession]:
+    """Mark game as completed and set winner"""
+    statement = select(GameSession).where(GameSession.game_id == game_id)
+    game = db_session.exec(statement).first()
+    
+    if game:
+        # Get winner track info
+        statement = select(Track).where(Track.track_id == winner_track_id)
+        winner_track = db_session.exec(statement).first()
+        
+        if winner_track:
+            game.winner_track_id = winner_track.track_id
+            game.winner_track_name = winner_track.track_name
+            game.winner_artwork_url = winner_track.artwork_url_600
+        
+        game.status = "completed"
+        game.updated_at = datetime.utcnow()
+        db_session.add(game)
+        db_session.commit()
+        db_session.refresh(game)
+    
+    return game

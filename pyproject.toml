@@ -18,3 +18,23 @@ dependencies = [
     "marimo[standard]>=0.18.4",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = [
+    "--cov=.",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "-v"
+]
+

@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artwork Bracket Game - iTunes Artist Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica',
+                'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-left: 20px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav a:hover {
+            color: #764ba2;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-setup {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .game-setup h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .artist-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .artist-option {
+            padding: 10px 20px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .artist-option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .artist-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .game-button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .game-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .game-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .bracket {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 40px;
+            min-height: 650px;
+        }
+
+        .match-card {
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .match-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px 20px;
+            border-bottom: 2px solid #e0e0e0;
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            text-align: center;
+        }
+
+        .match-progress {
+            background: #f5f7ff;
+            padding: 15px 20px;
+            border-bottom: 2px solid #e0e0e0;
+            font-size: 13px;
+            color: #667eea;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .track-options-container {
+            display: flex;
+            flex-direction: row;
+            gap: 0;
+            padding: 0;
+        }
+
+        .track-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            flex: 1;
+            background: white;
+            border-right: 3px solid #f0f0f0;
+        }
+
+        .track-option:last-of-type {
+            border-right: none;
+        }
+
+        .track-option:hover {
+            background: #f8f9ff;
+            transform: scale(1.02);
+        }
+
+        .track-artwork {
+            width: 160px;
+            height: 160px;
+            margin-bottom: 20px;
+            border-radius: 14px;
+            object-fit: cover;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s;
+        }
+
+        .track-option:hover .track-artwork {
+            transform: scale(1.05);
+        }
+
+        .track-name {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 18px;
+            font-size: 15px;
+            word-break: break-word;
+            line-height: 1.4;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .vote-button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 120px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .vote-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .vote-button:active {
+            transform: translateY(-1px);
+        }
+
+        .audio-controls {
+            margin: 12px 0;
+            width: 100%;
+        }
+
+        .audio-player {
+            width: 100%;
+            height: 32px;
+            border-radius: 6px;
+        }
+
+        .audio-player::-webkit-media-controls-panel {
+            background-color: #f0f4ff;
+        }
+
+        .vs-divider {
+            display: none;
+        }
+
+        .results-container {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .results-container h2 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .winner-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+
+        .winner-section h3 {
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .winner-artwork {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .winner-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .dismissed-section {
+            margin-top: 40px;
+        }
+
+        .dismissed-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .dismissed-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .dismissed-item {
+            text-align: center;
+        }
+
+        .dismissed-item img {
+            width: 100%;
+            height: 100px;
+            border-radius: 8px;
+            object-fit: cover;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 8px;
+        }
+
+        .dismissed-item p {
+            font-size: 12px;
+            color: #666;
+            word-break: break-word;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f0f0f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .message.error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .message.info {
+            background: #eef;
+            color: #33c;
+            border: 1px solid #ccf;
+        }
+
+        .round-header {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .round-header h3 {
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .button-secondary {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .button-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 20px;
+            }
+
+            .game-setup h2 {
+                font-size: 20px;
+            }
+
+            .match-card {
+                max-width: 100%;
+            }
+
+            .track-artwork {
+                width: 120px;
+                height: 120px;
+            }
+
+            .track-option {
+                padding: 15px 10px;
+            }
+
+            .track-name {
+                font-size: 13px;
+                min-height: 40px;
+                margin-bottom: 12px;
+            }
+
+            .vote-button {
+                padding: 10px 16px;
+                font-size: 12px;
+                min-width: 100px;
+            }
+
+            .winner-artwork {
+                width: 150px;
+                height: 150px;
+            }
+
+            .dismissed-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <h1>🎵 Artwork Bracket</h1>
+            <div>
+                <a href="/">🔍 Search</a>
+                <a href="/collected-artists">🎸 Artists</a>
+                <a href="/collected-tracks">📚 Tracks</a>
+                <a href="/game" style="color: #764ba2;">🎮 Game</a>
+            </div>
+        </div>
+
+        <div class="game-container">
+            <div id="game-setup" class="game-setup">
+                <h2>🏆 Choose Your Favorite Artwork</h2>
+                <p style="color: #666; margin-bottom: 20px;">
+                    Select an artist and start a bracket tournament to find your favorite artwork!
+                </p>
+                <div class="artist-selector" id="artist-selector"></div>
+                <button class="game-button" id="start-game-btn" onclick="startGame()" disabled>
+                    Start Game
+                </button>
+            </div>
+
+            <div id="game-play" style="display: none;">
+                <div id="message-container"></div>
+                <div class="round-header" id="round-info"></div>
+                <div class="bracket" id="bracket-container"></div>
+            </div>
+
+            <div id="game-results" style="display: none;">
+                <div class="results-container">
+                    <h2>🎉 Tournament Complete!</h2>
+                    <div class="winner-section" id="winner-info"></div>
+                    <div class="dismissed-section">
+                        <h3>Other Artworks</h3>
+                        <div class="dismissed-grid" id="dismissed-grid"></div>
+                    </div>
+                    <div class="button-group">
+                        <button class="game-button" onclick="resetGame()">Play Again</button>
+                        <button class="button-secondary" onclick="window.location.href='/'">Home</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedArtist = null;
+        let currentGame = null;
+        let currentRound = 1;
+        let currentMatchIndex = 0;
+        let roundMatches = [];
+
+        async function loadCachedArtists() {
+            try {
+                const response = await fetch('/api/cached-artists');
+                const data = await response.json();
+                const selector = document.getElementById('artist-selector');
+                selector.innerHTML = '';
+
+                if (data.artists && data.artists.length > 0) {
+                    data.artists.forEach(artist => {
+                        const btn = document.createElement('button');
+                        btn.className = 'artist-option';
+                        btn.textContent = artist.artist_name;
+                        btn.onclick = () => selectArtist(artist.artist_id, artist.artist_name, btn);
+                        selector.appendChild(btn);
+                    });
+                } else {
+                    selector.innerHTML =
+                        '<p style="grid-column: 1/-1; color: #999;">No cached artists. Collect some tracks first!</p>';
+                }
+            } catch (error) {
+                console.error('Error loading artists:', error);
+            }
+        }
+
+        function selectArtist(artistId, artistName, btn) {
+            document.querySelectorAll('.artist-option').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedArtist = { id: artistId, name: artistName };
+            document.getElementById('start-game-btn').disabled = false;
+        }
+
+        async function startGame() {
+            if (!selectedArtist) return;
+
+            try {
+                const response = await fetch(`/api/game/start/${selectedArtist.id}`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                    return;
+                }
+
+                if (!data.matches) {
+                    showMessage('No matches available for this artist', 'error');
+                    return;
+                }
+
+                currentGame = data;
+                currentRound = 1;
+                roundMatches = data.matches;
+                currentMatchIndex = 0;
+                renderBracket(data);
+                document.getElementById('game-setup').style.display = 'none';
+                document.getElementById('game-play').style.display = 'block';
+            } catch (error) {
+                console.error('Error starting game:', error);
+                showMessage('Failed to start game', 'error');
+            }
+        }
+
+        function renderBracket(gameData) {
+            const roundInfo = document.getElementById('round-info');
+            roundInfo.innerHTML = `<h3>Round ${gameData.round_number}</h3>`;
+
+            const bracket = document.getElementById('bracket-container');
+            bracket.innerHTML = '';
+
+            const match = roundMatches[currentMatchIndex];
+            if (!match) return;
+
+            const totalMatches = roundMatches.length;
+            const progress = `Match ${currentMatchIndex + 1} of ${totalMatches}`;
+
+            const card = document.createElement('div');
+            card.className = 'match-card';
+
+            card.innerHTML = `
+                <div class="match-header">
+                    Round ${match.round_number}
+                </div>
+                <div class="match-progress">${progress}</div>
+                <div class="track-options-container">
+                    <div class="track-option" onclick="recordWinner('${currentGame.game_id}', ${match.match_id}, '${match.track_1.track_id}')">
+                        <img src="${match.track_1.artwork_url_600}" alt="${match.track_1.track_name}" class="track-artwork">
+                        <div class="track-name">${match.track_1.track_name}</div>
+                        ${match.track_1.preview_url ? `
+                            <div class="audio-controls">
+                                <audio controls class="audio-player" preload="none">
+                                    <source src="${match.track_1.preview_url}" type="audio/mpeg">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                        ` : ''}
+                        <button class="vote-button" style="pointer-events: none; opacity: 0.7;">
+                            👍 Choose This
+                        </button>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="track-option" onclick="recordWinner('${currentGame.game_id}', ${match.match_id}, '${match.track_2.track_id}')">
+                        <img src="${match.track_2.artwork_url_600}" alt="${match.track_2.track_name}" class="track-artwork">
+                        <div class="track-name">${match.track_2.track_name}</div>
+                        ${match.track_2.preview_url ? `
+                            <div class="audio-controls">
+                                <audio controls class="audio-player" preload="none">
+                                    <source src="${match.track_2.preview_url}" type="audio/mpeg">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                        ` : ''}
+                        <button class="vote-button" style="pointer-events: none; opacity: 0.7;">
+                            👍 Choose This
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            bracket.appendChild(card);
+        }
+
+        async function recordWinner(gameId, matchId, winnerTrackId) {
+            try {
+                const response = await fetch('/api/game/match-result', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        game_id: gameId,
+                        match_id: matchId,
+                        winner_track_id: winnerTrackId,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                    return;
+                }
+
+                if (data.status === 'completed') {
+                    showResults(gameId);
+                } else if (data.status === 'next_round') {
+                    currentRound = data.current_round;
+                    roundMatches = data.matches;
+                    currentMatchIndex = 0;
+                    showMessage(`Round ${data.current_round} - First match ready!`, 'info');
+                    renderBracket({
+                        game_id: gameId,
+                        round_number: data.current_round,
+                        matches: data.matches,
+                    });
+                } else {
+                    currentMatchIndex++;
+                    renderBracket(currentGame);
+                }
+            } catch (error) {
+                console.error('Error recording winner:', error);
+                showMessage('Failed to record winner', 'error');
+            }
+        }
+
+        async function showResults(gameId) {
+            try {
+                const response = await fetch(`/api/game/results/${gameId}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                    return;
+                }
+
+                const winnerInfo = document.getElementById('winner-info');
+                let winnerAudioHTML = '';
+                if (data.winner_preview_url) {
+                    winnerAudioHTML = `
+                        <div style="margin: 20px 0;">
+                            <audio id="winner-audio" controls autoplay style="width: 100%; height: 40px; border-radius: 6px;">
+                                <source src="${data.winner_preview_url}" type="audio/mpeg">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    `;
+                }
+                
+                winnerInfo.innerHTML = `
+                    <h3>🏆 Champion</h3>
+                    <img src="${data.winner_artwork_url}" alt="${data.winner_track_name}" class="winner-artwork">
+                    <div class="winner-name">${data.winner_track_name}</div>
+                    ${winnerAudioHTML}
+                `;
+
+                const dismissedGrid = document.getElementById('dismissed-grid');
+                dismissedGrid.innerHTML = '';
+                data.dismissed_tracks.forEach(track => {
+                    const item = document.createElement('div');
+                    item.className = 'dismissed-item';
+                    let audioHTML = '';
+                    if (track.preview_url) {
+                        audioHTML = `
+                            <audio controls style="width: 100%; height: 24px; margin-top: 4px; border-radius: 4px;">
+                                <source src="${track.preview_url}" type="audio/mpeg">
+                            </audio>
+                        `;
+                    }
+                    item.innerHTML = `
+                        <img src="${track.artwork_url_600}" alt="${track.track_name}">
+                        <p>${track.track_name}</p>
+                        ${audioHTML}
+                    `;
+                    dismissedGrid.appendChild(item);
+                });
+
+                document.getElementById('game-play').style.display = 'none';
+                document.getElementById('game-results').style.display = 'block';
+            } catch (error) {
+                console.error('Error getting results:', error);
+                showMessage('Failed to load results', 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('message-container');
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(msg);
+
+            setTimeout(() => {
+                msg.remove();
+            }, 5000);
+        }
+
+        function resetGame() {
+            selectedArtist = null;
+            currentGame = null;
+            currentRound = 1;
+            currentMatchIndex = 0;
+            roundMatches = [];
+            document.getElementById('game-setup').style.display = 'block';
+            document.getElementById('game-play').style.display = 'none';
+            document.getElementById('game-results').style.display = 'none';
+            document.getElementById('message-container').innerHTML = '';
+            loadCachedArtists();
+        }
+
+        loadCachedArtists();
+    </script>
+</body>
+</html>
