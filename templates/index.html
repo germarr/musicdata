@@ -116,6 +116,73 @@
             flex-wrap: wrap;
         }
         
+        .filter-bar {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            color: #333;
+            font-family: inherit;
+        }
+        
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+        
+        .clear-btn {
+            padding: 10px 20px;
+            background: #999;
+            font-size: 14px;
+            height: fit-content;
+            align-self: flex-end;
+        }
+        
+        .clear-btn:hover {
+            background: #777;
+        }
+        
+        .filter-summary {
+            font-size: 13px;
+            color: #666;
+            padding: 10px 0;
+            border-top: 1px solid #e0e0e0;
+            padding-top: 15px;
+        }
+        
         #artistInput {
             flex: 1;
             min-width: 250px;
@@ -381,6 +448,46 @@
             <p>Searching iTunes API...</p>
         </div>
         
+        <div class="filter-bar" id="filterBar" style="display: none;">
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="genreFilter">Genre:</label>
+                    <select id="genreFilter">
+                        <option value="">All Genres</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="typeFilter">Artist Type:</label>
+                    <select id="typeFilter">
+                        <option value="">All Types</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sortFilter">Sort:</label>
+                    <select id="sortFilter">
+                        <option value="original">Original Order</option>
+                        <option value="name-asc">Name (A → Z)</option>
+                        <option value="name-desc">Name (Z → A)</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="liveSearch">Search Results:</label>
+                    <input 
+                        type="text" 
+                        id="liveSearch" 
+                        placeholder="Search within results..."
+                        autocomplete="off"
+                    >
+                </div>
+                
+                <button id="clearFiltersBtn" class="clear-btn">Clear Filters</button>
+            </div>
+            <div class="filter-summary" id="filterSummary"></div>
+        </div>
+        
         <div class="results-section" id="resultsSection">
             <div class="results-info" id="resultsInfo"></div>
             <div class="table-wrapper">
@@ -423,6 +530,19 @@
         const historySection = document.getElementById('historySection');
         const historyList = document.getElementById('historyList');
         
+        // Filter elements
+        const filterBar = document.getElementById('filterBar');
+        const genreFilter = document.getElementById('genreFilter');
+        const typeFilter = document.getElementById('typeFilter');
+        const sortFilter = document.getElementById('sortFilter');
+        const liveSearch = document.getElementById('liveSearch');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+        const filterSummary = document.getElementById('filterSummary');
+        
+        // State
+        let allResults = [];
+        let filteredResults = [];
+        
         // Search button click handler
         searchButton.addEventListener('click', searchArtists);
         
@@ -430,6 +550,13 @@
         artistInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchArtists();
         });
+        
+        // Filter event listeners
+        genreFilter.addEventListener('change', applyFilters);
+        typeFilter.addEventListener('change', applyFilters);
+        sortFilter.addEventListener('change', applyFilters);
+        liveSearch.addEventListener('input', applyFilters);
+        clearFiltersBtn.addEventListener('click', clearAllFilters);
         
         async function searchArtists() {
             const query = artistInput.value.trim();
@@ -442,6 +569,7 @@
             clearError();
             loading.classList.add('active');
             resultsSection.classList.remove('active');
+            filterBar.style.display = 'none';
             noResults.style.display = 'none';
             
             try {
@@ -469,18 +597,92 @@
         }
         
         function displayResults(results, query) {
+            allResults = results || [];
+            filteredResults = allResults;
             resultsBody.innerHTML = '';
             
             if (!results || results.length === 0) {
                 noResults.style.display = 'block';
                 resultsSection.classList.remove('active');
+                filterBar.style.display = 'none';
                 return;
             }
             
-            resultsInfo.textContent = `Found ${results.length} artist${results.length !== 1 ? 's' : ''} for "${query}"`;
+            // Populate filter dropdowns
+            populateFilters();
+            
+            // Show filter bar
+            filterBar.style.display = 'block';
+            
+            resultsInfo.textContent = `Found ${results.length} artist${results.length !== 1 ? 's' : ''}`;
             resultsSection.classList.add('active');
             
-            results.forEach(result => {
+            renderFilteredResults();
+        }
+        
+        function populateFilters() {
+            // Get unique genres
+            const genres = new Set();
+            const types = new Set();
+            
+            allResults.forEach(result => {
+                if (result.primary_genre) genres.add(result.primary_genre);
+                if (result.artist_type) types.add(result.artist_type);
+            });
+            
+            // Populate genre dropdown
+            genreFilter.innerHTML = '<option value="">All Genres</option>';
+            Array.from(genres).sort().forEach(genre => {
+                const option = document.createElement('option');
+                option.value = genre;
+                option.textContent = genre;
+                genreFilter.appendChild(option);
+            });
+            
+            // Populate type dropdown
+            typeFilter.innerHTML = '<option value="">All Types</option>';
+            Array.from(types).sort().forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                typeFilter.appendChild(option);
+            });
+        }
+        
+        function applyFilters() {
+            filteredResults = allResults.filter(result => {
+                const genreMatch = !genreFilter.value || result.primary_genre === genreFilter.value;
+                const typeMatch = !typeFilter.value || result.artist_type === typeFilter.value;
+                const liveSearchMatch = !liveSearch.value || 
+                    result.artist_name.toLowerCase().includes(liveSearch.value.toLowerCase());
+                
+                return genreMatch && typeMatch && liveSearchMatch;
+            });
+            
+            // Apply sorting
+            const sortBy = sortFilter.value;
+            if (sortBy === 'name-asc') {
+                filteredResults.sort((a, b) => a.artist_name.localeCompare(b.artist_name));
+            } else if (sortBy === 'name-desc') {
+                filteredResults.sort((a, b) => b.artist_name.localeCompare(a.artist_name));
+            }
+            
+            updateFilterSummary();
+            renderFilteredResults();
+        }
+        
+        function renderFilteredResults() {
+            resultsBody.innerHTML = '';
+            
+            if (filteredResults.length === 0) {
+                noResults.style.display = 'block';
+                resultsInfo.textContent = 'No results match your filters';
+                return;
+            }
+            
+            resultsInfo.textContent = `Showing ${filteredResults.length} of ${allResults.length} artists`;
+            
+            filteredResults.forEach(result => {
                 const row = document.createElement('tr');
                 
                 const artworkUrl = result.artwork_url_100 || '';
@@ -512,6 +714,32 @@
                 row.querySelector('td:last-child').appendChild(albumButton);
                 resultsBody.appendChild(row);
             });
+        }
+        
+        function updateFilterSummary() {
+            const activeFilters = [];
+            
+            if (genreFilter.value) activeFilters.push(`Genre: ${genreFilter.value}`);
+            if (typeFilter.value) activeFilters.push(`Type: ${typeFilter.value}`);
+            if (liveSearch.value) activeFilters.push(`Search: "${liveSearch.value}"`);
+            if (sortFilter.value !== 'original') {
+                const sortLabel = sortFilter.options[sortFilter.selectedIndex].text;
+                activeFilters.push(`Sorted by: ${sortLabel}`);
+            }
+            
+            if (activeFilters.length > 0) {
+                filterSummary.textContent = `Active filters: ${activeFilters.join(' • ')}`;
+            } else {
+                filterSummary.textContent = '';
+            }
+        }
+        
+        function clearAllFilters() {
+            genreFilter.value = '';
+            typeFilter.value = '';
+            liveSearch.value = '';
+            sortFilter.value = 'original';
+            applyFilters();
         }
         
         function viewAlbums(artistId, artistName) {
