@@ -12,8 +12,9 @@ A FastAPI application that allows users to search for artists using the iTunes A
 - 📜 Search history per user session
 - 🎼 **Browse albums by artist** with artwork gallery
 - 🎵 **Collect detailed track metadata** from albums with progress tracking
-- 📚 **Cache collected artists** with track data persistence
+- 📚 **Dedicated Collected Artists page** with easy management
 - 🎧 **Preview tracks** with built-in audio player
+- 🧭 **Navigation bar** for easy access between pages
 - 📱 Responsive web interface
 - ⚡ Real-time AJAX search without page reload
 
@@ -168,6 +169,11 @@ Search for artists on iTunes and store results in database.
 
 ### `GET /albums`
 Serves the albums gallery page.
+
+**Response:** HTML page
+
+### `GET /collected-artists`
+Serves the collected artists page showing all cached artists.
 
 **Response:** HTML page
 
