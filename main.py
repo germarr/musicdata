@@ -442,6 +442,10 @@ async def session_middleware(request: Request, call_next):
     return response
 
 
+# Register session middleware
+app.middleware("http")(session_middleware)
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
