@@ -5,7 +5,8 @@ A FastAPI application that allows users to search for artists using the iTunes A
 ## Features
 
 ✨ **Core Features:**
-- 🔍 Search for artists using the iTunes API
+- 🔍 Search for artists using the iTunes API (up to 200 results)
+- 🎯 **Comprehensive filtering** on search results (genre, type, text search, sorting)
 - 📊 Display results in a nicely formatted table
 - 💾 Persistent SQLite database with SQLModel ORM
 - 🍪 User sessions with HTTP-only cookies
@@ -106,24 +107,32 @@ yolo_seg/
 1. **Search for an Artist:**
    - Enter an artist name in the search field
    - Click "Search" or press Enter
-   - Results appear in a formatted table
+   - Results appear in a formatted table (up to 200 results)
 
-2. **View Artist Details:**
+2. **Filter Search Results:**
+   - **Genre Filter:** Select one genre to show only artists in that genre
+   - **Artist Type Filter:** Filter by Artist, Composer, or other types
+   - **Sort:** Order results alphabetically (A→Z or Z→A)
+   - **Live Search:** Search within results by typing artist name
+   - **Clear Filters:** Reset all filters to show all results
+   - **Filter Summary:** See all active filters at a glance
+
+3. **View Artist Details:**
    - Results include artwork, name, genre, and iTunes link
    - Click "View on iTunes →" to visit the artist's iTunes page
 
-3. **Browse Albums:**
+4. **Browse Albums:**
    - Click "Check Albums" button in search results
    - View all albums by the artist with artwork
    - See track count and release date for each album
 
-4. **Collect Track Data:**
+5. **Collect Track Data:**
    - Click "View Tracks" on any album
    - App collects detailed track metadata from iTunes API
    - Progress bar shows collection status (with rate limiting)
    - Modal displays all tracks with previews
 
-5. **Preview Tracks:**
+6. **Preview Tracks:**
    - Click "▶ Preview" button on any track
    - Built-in audio player streams track preview
    - See track duration, genre, and explicit content flag
