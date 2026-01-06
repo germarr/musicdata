@@ -1,0 +1,19 @@
+[project]
+name = "cars-pro"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.128.0",
+    "numpy>=2.4.0",
+    "opencv-python>=4.11.0.86",
+    "python-multipart>=0.0.21",
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+    "ultralytics>=8.3.243",
+    "uvicorn>=0.40.0",
+    "sqlmodel>=0.0.14",
+    "httpx>=0.25.0",
+]
+

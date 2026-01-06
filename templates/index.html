@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iTunes Artist Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 40px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .search-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        #artistInput {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        #artistInput:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .results-section {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results-section.active {
+            display: block;
+        }
+        
+        .results-info {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        thead {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        th {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid #e0e0e0;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .artist-cell {
+            font-weight: 500;
+            color: #667eea;
+        }
+        
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            word-break: break-all;
+            font-size: 12px;
+        }
+        
+        .link:hover {
+            text-decoration: underline;
+        }
+        
+        .img-thumbnail {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #999;
+            padding: 30px;
+            font-size: 16px;
+        }
+        
+        .history-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .history-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .history-list {
+            list-style: none;
+        }
+        
+        .history-item {
+            padding: 10px 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .history-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .album-btn {
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        
+        .album-btn:hover {
+            background: #764ba2;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .search-section {
+                flex-direction: column;
+            }
+            
+            #artistInput {
+                min-width: auto;
+            }
+            
+            th, td {
+                padding: 10px;
+                font-size: 12px;
+            }
+            
+            .img-thumbnail {
+                width: 40px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 iTunes Artist Search</h1>
+        <p class="subtitle">Search for your favorite artists and discover all the details</p>
+        
+        <div class="error" id="errorMessage"></div>
+        
+        <div class="search-section">
+            <input 
+                type="text" 
+                id="artistInput" 
+                placeholder="Enter artist name..."
+                autocomplete="off"
+            >
+            <button id="searchButton">Search</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Searching iTunes API...</p>
+        </div>
+        
+        <div class="results-section" id="resultsSection">
+            <div class="results-info" id="resultsInfo"></div>
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Artwork</th>
+                            <th>Artist Name</th>
+                            <th>Genre</th>
+                            <th>Artist Link</th>
+                            <th>Type</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="noResults" class="no-results" style="display: none;">
+            No results found. Try another artist name.
+        </div>
+        
+        <div class="history-section" id="historySection" style="display: none;">
+            <h2>📜 Your Search History</h2>
+            <ul class="history-list" id="historyList"></ul>
+        </div>
+    </div>
+    
+    <script>
+        const artistInput = document.getElementById('artistInput');
+        const searchButton = document.getElementById('searchButton');
+        const errorMessage = document.getElementById('errorMessage');
+        const loading = document.getElementById('loading');
+        const resultsSection = document.getElementById('resultsSection');
+        const noResults = document.getElementById('noResults');
+        const resultsInfo = document.getElementById('resultsInfo');
+        const resultsBody = document.getElementById('resultsBody');
+        const historySection = document.getElementById('historySection');
+        const historyList = document.getElementById('historyList');
+        
+        // Search button click handler
+        searchButton.addEventListener('click', searchArtists);
+        
+        // Allow Enter key to trigger search
+        artistInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchArtists();
+        });
+        
+        async function searchArtists() {
+            const query = artistInput.value.trim();
+            
+            if (!query) {
+                showError('Please enter an artist name');
+                return;
+            }
+            
+            clearError();
+            loading.classList.add('active');
+            resultsSection.classList.remove('active');
+            noResults.style.display = 'none';
+            
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ artist_name: query })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                displayResults(data.results, query);
+                loadHistory();
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+                console.error(error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        function displayResults(results, query) {
+            resultsBody.innerHTML = '';
+            
+            if (!results || results.length === 0) {
+                noResults.style.display = 'block';
+                resultsSection.classList.remove('active');
+                return;
+            }
+            
+            resultsInfo.textContent = `Found ${results.length} artist${results.length !== 1 ? 's' : ''} for "${query}"`;
+            resultsSection.classList.add('active');
+            
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                
+                const artworkUrl = result.artwork_url_100 || '';
+                const artistLink = result.artist_link_url || '#';
+                
+                // Create button separately to avoid quote issues
+                const albumButton = document.createElement('button');
+                albumButton.className = 'album-btn';
+                albumButton.textContent = 'Check Albums';
+                albumButton.onclick = () => viewAlbums(result.artist_id, result.artist_name);
+                
+                row.innerHTML = `
+                    <td>
+                        ${artworkUrl ? `<img src="${artworkUrl}" alt="${result.artist_name}" class="img-thumbnail">` : 'N/A'}
+                    </td>
+                    <td class="artist-cell">${escapeHtml(result.artist_name)}</td>
+                    <td>${escapeHtml(result.primary_genre || 'Unknown')}</td>
+                    <td>
+                        ${artistLink !== '#' ? 
+                            `<a href="${artistLink}" target="_blank" class="link">View on iTunes →</a>` : 
+                            'N/A'
+                        }
+                    </td>
+                    <td>${escapeHtml(result.artist_type || 'Unknown')}</td>
+                    <td></td>
+                `;
+                
+                // Add button to last cell to avoid quote issues
+                row.querySelector('td:last-child').appendChild(albumButton);
+                resultsBody.appendChild(row);
+            });
+        }
+        
+        function viewAlbums(artistId, artistName) {
+            sessionStorage.setItem('selectedArtistId', artistId);
+            sessionStorage.setItem('selectedArtistName', artistName);
+            window.location.href = '/albums';
+        }
+        
+        async function loadHistory() {
+            try {
+                const response = await fetch('/history');
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                if (data.searches && data.searches.length > 0) {
+                    historySection.style.display = 'block';
+                    historyList.innerHTML = '';
+                    
+                    data.searches.forEach(search => {
+                        const item = document.createElement('li');
+                        item.className = 'history-item';
+                        const date = new Date(search.created_at).toLocaleDateString();
+                        item.textContent = `${search.artist_query} (${date})`;
+                        item.onclick = () => {
+                            artistInput.value = search.artist_query;
+                            searchArtists();
+                        };
+                        historyList.appendChild(item);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('active');
+        }
+        
+        function clearError() {
+            errorMessage.classList.remove('active');
+            errorMessage.textContent = '';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Load history on page load
+        loadHistory();
+    </script>
+</body>
+</html>

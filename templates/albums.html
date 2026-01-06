@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artist Albums - iTunes Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .header-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header-info {
+            flex: 1;
+        }
+        
+        .header-info h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .header-info p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        
+        .back-button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .back-button:hover {
+            background: #764ba2;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .albums-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 20px;
+        }
+        
+        .album-card {
+            background: #f9f9f9;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .album-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .album-cover {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            background: #e0e0e0;
+        }
+        
+        .album-details {
+            padding: 15px;
+        }
+        
+        .album-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .album-meta {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .album-tracks {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .album-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .album-link {
+            flex: 1;
+            padding: 8px 12px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .album-link:hover {
+            background: #764ba2;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .no-albums {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            font-size: 16px;
+        }
+        
+        .info-text {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .header-image {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .header-info h1 {
+                font-size: 22px;
+            }
+            
+            .albums-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 15px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header" id="header">
+            <button class="back-button" onclick="goBack()">← Back</button>
+        </div>
+        
+        <div class="content">
+            <div class="error" id="errorMessage"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Loading albums...</p>
+            </div>
+            
+            <div id="albumsContent" style="display: none;">
+                <p class="info-text" id="albumsInfo"></p>
+                <div class="albums-grid" id="albumsGrid"></div>
+            </div>
+            
+            <div id="noAlbums" class="no-albums" style="display: none;">
+                No albums found for this artist.
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let artistId = null;
+        let artistName = null;
+        
+        window.addEventListener('DOMContentLoaded', async () => {
+            artistId = sessionStorage.getItem('selectedArtistId');
+            artistName = sessionStorage.getItem('selectedArtistName');
+            
+            if (!artistId || !artistName) {
+                showError('No artist selected. Redirecting back...');
+                setTimeout(goBack, 2000);
+                return;
+            }
+            
+            updateHeader();
+            await loadAlbums();
+        });
+        
+        function updateHeader() {
+            const headerDiv = document.getElementById('header');
+            headerDiv.innerHTML = `
+                <button class="back-button" onclick="goBack()">← Back</button>
+                <div class="header-info">
+                    <h1>${escapeHtml(artistName)} - Albums</h1>
+                </div>
+            `;
+        }
+        
+        async function loadAlbums() {
+            const loading = document.getElementById('loading');
+            const albumsContent = document.getElementById('albumsContent');
+            const noAlbums = document.getElementById('noAlbums');
+            
+            loading.classList.add('active');
+            albumsContent.style.display = 'none';
+            noAlbums.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/albums/${artistId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                displayAlbums(data);
+            } catch (error) {
+                showError(`Error loading albums: ${error.message}`);
+                console.error(error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        function displayAlbums(data) {
+            const albumsContent = document.getElementById('albumsContent');
+            const noAlbums = document.getElementById('noAlbums');
+            const albumsGrid = document.getElementById('albumsGrid');
+            const albumsInfo = document.getElementById('albumsInfo');
+            
+            if (!data.albums || data.albums.length === 0) {
+                noAlbums.style.display = 'block';
+                return;
+            }
+            
+            albumsInfo.textContent = `${data.albums.length} album${data.albums.length !== 1 ? 's' : ''} found`;
+            albumsGrid.innerHTML = '';
+            
+            data.albums.forEach(album => {
+                const card = document.createElement('div');
+                card.className = 'album-card';
+                
+                const releaseDate = album.release_date ? new Date(album.release_date).getFullYear() : 'Unknown';
+                const priceStr = album.collection_price > 0 ? `${album.currency === 'USD' ? '$' : ''}${album.collection_price}` : 'Free';
+                
+                card.innerHTML = `
+                    <img src="${album.artwork_url_600 || album.artwork_url_100 || ''}" 
+                         alt="${escapeHtml(album.collection_name)}" 
+                         class="album-cover"
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22250%22 height=%22250%22%3E%3Crect fill=%22%23e0e0e0%22 width=%22250%22 height=%22250%22/%3E%3C/svg%3E'">
+                    <div class="album-details">
+                        <div class="album-title">${escapeHtml(album.collection_name)}</div>
+                        <div class="album-meta">Artist: ${escapeHtml(album.artist_name)}</div>
+                        <div class="album-meta">Genre: ${escapeHtml(album.primary_genre)}</div>
+                        <div class="album-meta">Released: ${releaseDate}</div>
+                        <div class="album-tracks">🎵 ${album.track_count} tracks</div>
+                        <div class="album-actions">
+                            ${album.collection_view_url ? 
+                                `<a href="${album.collection_view_url}" target="_blank" class="album-link">View on iTunes</a>` : 
+                                ''
+                            }
+                        </div>
+                    </div>
+                `;
+                
+                albumsGrid.appendChild(card);
+            });
+            
+            albumsContent.style.display = 'block';
+        }
+        
+        function goBack() {
+            window.history.back();
+        }
+        
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.classList.add('active');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
