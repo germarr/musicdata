@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import uuid
@@ -231,6 +231,12 @@ async def get_collected_artists_page(request: Request):
     return templates.TemplateResponse("collected-artists.html", {"request": request})
 
 
+@app.get("/collected-tracks")
+async def get_collected_tracks_page(request: Request):
+    """Serve the collected tracks page"""
+    return templates.TemplateResponse("collected-tracks.html", {"request": request})
+
+
 @app.get("/api/albums/{artist_id}")
 async def get_artist_albums(artist_id: int) -> AlbumsResponse:
     """
@@ -418,6 +424,75 @@ async def get_all_cached_artists(db: Session = Depends(get_session)) -> CachedAr
             for artist in cached
         ]
     )
+
+
+@app.get("/api/artists-with-track-counts")
+async def get_artists_with_track_counts(db: Session = Depends(get_session)):
+    """Get all artists with their collected track counts and albums"""
+    cached = get_cached_artists(db)
+    
+    artists_data = []
+    for artist in cached:
+        # Get all albums for this artist
+        albums = db.exec(
+            select(Track.collection_id).where(Track.artist_id == artist.artist_id).distinct()
+        ).all()
+        
+        # Get track count for this artist
+        track_count = db.exec(
+            select(func.count(Track.id)).where(Track.artist_id == artist.artist_id)
+        ).first()
+        
+        artists_data.append({
+            "artist_id": artist.artist_id,
+            "artist_name": artist.artist_name,
+            "album_count": len(set(albums)) if albums else 0,
+            "track_count": track_count or 0,
+            "updated_at": artist.updated_at.isoformat(),
+        })
+    
+    return {
+        "artists": artists_data,
+        "total_artists": len(artists_data),
+        "total_tracks": sum(a["track_count"] for a in artists_data),
+    }
+
+
+@app.get("/api/tracks/{artist_id}")
+async def get_artist_all_tracks(artist_id: str, db: Session = Depends(get_session)):
+    """Get all tracks for an artist grouped by album"""
+    statement = select(Track).where(Track.artist_id == artist_id).order_by(
+        Track.collection_id, Track.track_number
+    )
+    tracks = db.exec(statement).all()
+    
+    if not tracks:
+        return {"artist_id": artist_id, "albums": [], "total_tracks": 0}
+    
+    # Group tracks by album
+    albums_dict = {}
+    for track in tracks:
+        if track.collection_id not in albums_dict:
+            albums_dict[track.collection_id] = {
+                "collection_id": track.collection_id,
+                "tracks": []
+            }
+        albums_dict[track.collection_id]["tracks"].append({
+            "track_id": track.track_id,
+            "track_number": track.track_number,
+            "track_name": track.track_name,
+            "track_duration_ms": track.track_duration_ms,
+            "preview_url": track.preview_url or "",
+            "explicit": track.explicit,
+            "primary_genre": track.primary_genre,
+            "release_date": track.release_date or "",
+        })
+    
+    return {
+        "artist_id": artist_id,
+        "albums": list(albums_dict.values()),
+        "total_tracks": len(tracks),
+    }
 
 
 
