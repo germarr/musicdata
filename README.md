@@ -74,6 +74,8 @@ yolo_seg/
 - `artist_id`, `collection_id`, `track_id`: Foreign key references (indexed)
 - `track_number`, `track_name`, `track_duration_ms`, `preview_url`, `explicit`, `primary_genre`, `release_date`
 - `is_playable`: Whether preview is available
+- `collection_name`: Album/collection name (new)
+- `artwork_url_600`: Album artwork URL for 600px images (new)
 - `created_at`: Timestamp
 
 ## Installation & Setup
@@ -177,6 +179,11 @@ Serves the collected artists page showing all cached artists.
 
 **Response:** HTML page
 
+### `GET /collected-tracks`
+Serves the collected tracks dashboard with metrics and filterable track listing by artist and album.
+
+**Response:** HTML page
+
 ### `GET /api/albums/{artist_id}`
 Get all albums for a specific artist.
 
@@ -245,6 +252,77 @@ Get all artists whose tracks have been collected.
 }
 ```
 
+### `GET /api/artists-with-track-counts`
+Get all artists with their collected track counts and album counts.
+
+**Response:**
+```json
+{
+  "artists": [
+    {
+      "artist_id": "159260351",
+      "artist_name": "Taylor Swift",
+      "album_count": 12,
+      "track_count": 156,
+      "updated_at": "2026-01-06T16:34:26.922869"
+    }
+  ],
+  "total_artists": 5,
+  "total_tracks": 487
+}
+```
+
+### `GET /api/tracks/{artist_id}`
+Get all tracks for a specific artist grouped by album with album metadata and artwork.
+
+**Response:**
+```json
+{
+  "artist_id": "159260351",
+  "albums": [
+    {
+      "collection_id": "123456789",
+      "collection_name": "Fearless",
+      "artwork_url_600": "https://is1-ssl.mzstatic.com/...",
+      "tracks": [
+        {
+          "track_id": "1",
+          "track_number": 1,
+          "track_name": "Fearless",
+          "track_duration_ms": 294000,
+          "preview_url": "https://...",
+          "explicit": false,
+          "primary_genre": "Pop",
+          "release_date": "2008-11-11"
+        }
+      ]
+    }
+  ],
+  "total_tracks": 156
+}
+```
+
+### `POST /api/collect-all-artist-tracks/{artist_id}`
+Collect and store all detailed tracks from all albums for an artist with deduplication.
+
+**Response:**
+```json
+{
+  "artist_id": "159260351",
+  "artist_name": "Taylor Swift",
+  "total_albums": 12,
+  "total_tracks_collected": 142,
+  "albums": [
+    {
+      "collection_id": "123456789",
+      "collection_name": "Fearless",
+      "new_tracks": 13,
+      "skipped_tracks": 0
+    }
+  ]
+}
+```
+
 ## Session Management
 
 - Sessions are created automatically on first visit
@@ -267,31 +345,40 @@ Get all artists whose tracks have been collected.
 
 ### 3. Track Collection with Caching
 - Fetches detailed metadata for all tracks in an album
-- Stores track data in SQLite for future access
+- Stores track data in SQLite for future access (including album name and artwork)
 - Shows progress bar during collection
 - Rate-limited (50ms between operations) to be respectful to iTunes API
 - Reuses cached data on subsequent requests
+- Auto-collects all albums when viewing an artist
 
 ### 4. Track Preview
 - Streams 30-second preview from iTunes
 - Built-in HTML5 audio player
 - Shows track details (duration, genre, explicit flag)
 
-### 5. Data Persistence
+### 5. Collected Tracks Dashboard
+- View all collected tracks organized by artist and album
+- Display album artwork (600px resolution) and full album names
+- Metrics showing total artists, total tracks, and average tracks per artist
+- Filter tracks by album
+- See track details (number, duration, genre, explicit flag)
+
+### 6. Data Persistence
 - All searches, albums, and tracks stored in SQLite
 - Users can see their search history and collected artists
 - Database survives app restarts
 
-### 6. Session Tracking
+### 7. Session Tracking
 - Each user gets a unique session ID
 - Stored in secure HTTP-only cookie
 - Middleware validates and updates sessions
 
-### 7. Beautiful UI
+### 8. Beautiful UI
 - Gradient background with modern design
 - Responsive table design for search results
 - Album grid gallery with hover effects
 - Track modal with smooth animations
+- Album artwork display in tracks table
 - Loading spinners and progress bars
 - Error messages for user feedback
 - Mobile-friendly layout
