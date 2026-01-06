@@ -257,6 +257,85 @@
             background: #764ba2;
         }
         
+        .cached-artists-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .cached-artists-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .cached-artists-section.empty {
+            display: none;
+        }
+        
+        .cached-artists-list {
+            list-style: none;
+        }
+        
+        .cached-artist-item {
+            padding: 15px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #f0f4f8 100%);
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .cached-artist-item:hover {
+            transform: translateX(2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .cached-artist-info {
+            flex: 1;
+        }
+        
+        .cached-artist-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .cached-artist-meta {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .cached-artist-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 10px;
+        }
+        
+        .cached-artist-btn {
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        
+        .cached-artist-btn:hover {
+            background: #764ba2;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -331,6 +410,12 @@
         <div class="history-section" id="historySection" style="display: none;">
             <h2>📜 Your Search History</h2>
             <ul class="history-list" id="historyList"></ul>
+        </div>
+        
+        <div class="cached-artists-section empty" id="cachedArtistsSection">
+            <h2>🎸 Collected Artists</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Artists whose tracks have been collected and cached</p>
+            <ul class="cached-artists-list" id="cachedArtistsList"></ul>
         </div>
     </div>
     
@@ -486,8 +571,63 @@
             return div.innerHTML;
         }
         
-        // Load history on page load
+        async function loadCachedArtists() {
+            const cachedArtistsSection = document.getElementById('cachedArtistsSection');
+            const cachedArtistsList = document.getElementById('cachedArtistsList');
+            
+            try {
+                const response = await fetch('/api/cached-artists');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                displayCachedArtists(data.artists, cachedArtistsList, cachedArtistsSection);
+            } catch (error) {
+                console.error('Error loading cached artists:', error);
+            }
+        }
+        
+        function displayCachedArtists(artists, list, section) {
+            if (!artists || artists.length === 0) {
+                section.classList.add('empty');
+                return;
+            }
+            
+            section.classList.remove('empty');
+            list.innerHTML = '';
+            
+            artists.forEach(artist => {
+                const li = document.createElement('li');
+                li.className = 'cached-artist-item';
+                
+                const date = new Date(artist.updated_at);
+                const dateStr = date.toLocaleDateString();
+                const status = artist.tracks_collected ? '✓ Tracks Collected' : '○ Tracks Not Collected';
+                
+                li.innerHTML = `
+                    <div class="cached-artist-info">
+                        <div class="cached-artist-name">${escapeHtml(artist.artist_name || 'Artist')}</div>
+                        <div class="cached-artist-meta">ID: ${artist.artist_id} • ${status} • Updated: ${dateStr}</div>
+                    </div>
+                    <div class="cached-artist-actions">
+                        <button class="cached-artist-btn" onclick="viewArtistAlbums('${artist.artist_id}', '${escapeHtml(artist.artist_name).replace(/'/g, "\\'")}')">View Albums</button>
+                    </div>
+                `;
+                
+                list.appendChild(li);
+            });
+        }
+        
+        function viewArtistAlbums(artistId, artistName) {
+            sessionStorage.setItem('selectedArtistId', artistId);
+            sessionStorage.setItem('selectedArtistName', artistName);
+            window.location.href = '/albums';
+        }
+        
+        // Load history and cached artists on page load
         loadHistory();
+        loadCachedArtists();
     </script>
 </body>
 </html>

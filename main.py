@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 import uuid
 import os
+import asyncio
 
 from database import (
     create_db_and_tables,
@@ -15,9 +16,22 @@ from database import (
     UserSession,
     Search,
     Result,
+    ArtistCache,
+    Track,
     engine,
+    is_artist_cached,
+    get_cached_artists,
+    get_artist_tracks,
+    get_or_create_artist_cache,
 )
-from itunes_client import search_artists, extract_artist_fields, search_albums_by_artist, extract_album_fields
+from itunes_client import (
+    search_artists,
+    extract_artist_fields,
+    search_albums_by_artist,
+    extract_album_fields,
+    get_album_tracks,
+    extract_track_fields,
+)
 
 # Initialize app
 app = FastAPI(title="iTunes Artist Search")
@@ -68,6 +82,36 @@ class AlbumsResponse(BaseModel):
     artist_id: str
     artist_name: str
     albums: list[AlbumResult]
+
+
+class TrackResult(BaseModel):
+    track_id: str
+    track_number: int
+    track_name: str
+    track_duration_ms: int
+    preview_url: str = ""
+    explicit: bool = False
+    primary_genre: str = "Unknown"
+
+
+class AlbumTracksResponse(BaseModel):
+    collection_id: str
+    collection_name: str
+    artist_name: str
+    artist_id: str
+    tracks: list[TrackResult]
+    total_tracks: int
+
+
+class CachedArtist(BaseModel):
+    artist_id: str
+    artist_name: str
+    tracks_collected: bool
+    updated_at: datetime
+
+
+class CachedArtistsResponse(BaseModel):
+    artists: list[CachedArtist]
 
 
 def get_session_id(request: Request) -> str:
@@ -230,7 +274,145 @@ async def get_artist_albums(artist_id: int) -> AlbumsResponse:
     )
 
 
-@app.middleware("http")
+@app.post("/api/collect-album-tracks/{artist_id}/{collection_id}")
+async def collect_album_tracks(artist_id: str, collection_id: str, db: Session = Depends(get_session)):
+    """
+    Collect and store all tracks for an album
+    Includes rate limiting (delay between API calls)
+    
+    Args:
+        artist_id: iTunes artist ID
+        collection_id: iTunes collection/album ID
+    
+    Returns:
+        Album tracks with metadata
+    """
+    # Check if already cached
+    if is_artist_cached(db, artist_id):
+        # Return cached tracks
+        tracks = get_artist_tracks(db, artist_id, collection_id)
+        if tracks:
+            return AlbumTracksResponse(
+                collection_id=collection_id,
+                collection_name=tracks[0].__dict__.get('track_name', 'Unknown') if tracks else "Unknown",
+                artist_name="",
+                artist_id=artist_id,
+                tracks=[
+                    TrackResult(
+                        track_id=t.track_id,
+                        track_number=t.track_number,
+                        track_name=t.track_name,
+                        track_duration_ms=t.track_duration_ms,
+                        preview_url=t.preview_url or "",
+                        explicit=t.explicit,
+                        primary_genre=t.primary_genre,
+                    )
+                    for t in tracks
+                ],
+                total_tracks=len(tracks),
+            )
+    
+    # Fetch from iTunes API with rate limiting
+    try:
+        tracks_data = await get_album_tracks(int(collection_id))
+    except Exception as e:
+        print(f"Error fetching tracks: {e}")
+        return AlbumTracksResponse(
+            collection_id=collection_id,
+            collection_name="Unknown",
+            artist_name="",
+            artist_id=artist_id,
+            tracks=[],
+            total_tracks=0,
+        )
+    
+    if not tracks_data:
+        return AlbumTracksResponse(
+            collection_id=collection_id,
+            collection_name="Unknown",
+            artist_name="",
+            artist_id=artist_id,
+            tracks=[],
+            total_tracks=0,
+        )
+    
+    # Get or create artist cache
+    get_or_create_artist_cache(db, artist_id, "")
+    
+    # Store tracks in database
+    stored_tracks = []
+    for track_data in tracks_data:
+        extracted = extract_track_fields(track_data)
+        # Remove artist_id and collection_id from extracted since we're providing them
+        extracted.pop('artist_id', None)
+        extracted.pop('collection_id', None)
+        
+        db_track = Track(
+            artist_id=artist_id,
+            collection_id=collection_id,
+            **extracted,
+        )
+        db.add(db_track)
+        stored_tracks.append(db_track)
+        
+        # Rate limiting: small delay between storing (0.05 seconds)
+        await asyncio.sleep(0.05)
+    
+    db.commit()
+    
+    # Mark as collected
+    statement = select(ArtistCache).where(ArtistCache.artist_id == artist_id)
+    cache = db.exec(statement).first()
+    if cache:
+        cache.tracks_collected = True
+        cache.updated_at = datetime.utcnow()
+        db.add(cache)
+        db.commit()
+    
+    # Get collection name from first track
+    collection_name = tracks_data[0].get("collectionName", "Unknown") if tracks_data else "Unknown"
+    artist_name = tracks_data[0].get("artistName", "") if tracks_data else ""
+    
+    return AlbumTracksResponse(
+        collection_id=collection_id,
+        collection_name=collection_name,
+        artist_name=artist_name,
+        artist_id=artist_id,
+        tracks=[
+            TrackResult(
+                track_id=t.track_id,
+                track_number=t.track_number,
+                track_name=t.track_name,
+                track_duration_ms=t.track_duration_ms,
+                preview_url=t.preview_url or "",
+                explicit=t.explicit,
+                primary_genre=t.primary_genre,
+            )
+            for t in stored_tracks
+        ],
+        total_tracks=len(stored_tracks),
+    )
+
+
+@app.get("/api/cached-artists")
+async def get_all_cached_artists(db: Session = Depends(get_session)) -> CachedArtistsResponse:
+    """Get all artists with collected track data"""
+    cached = get_cached_artists(db)
+    
+    return CachedArtistsResponse(
+        artists=[
+            CachedArtist(
+                artist_id=artist.artist_id,
+                artist_name=artist.artist_name,
+                tracks_collected=artist.tracks_collected,
+                updated_at=artist.updated_at,
+            )
+            for artist in cached
+        ]
+    )
+
+
+
 async def session_middleware(request: Request, call_next):
     """Middleware to handle session cookies and database sessions"""
     session_id = request.cookies.get(SESSION_COOKIE_NAME)

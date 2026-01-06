@@ -136,3 +136,62 @@ def extract_album_fields(result: Dict[str, Any]) -> Dict[str, Any]:
         "currency": result.get("currency", ""),
     }
 
+
+async def get_album_tracks(collection_id: int) -> List[Dict[str, Any]]:
+    """
+    Get all tracks for a specific album
+    
+    Args:
+        collection_id: iTunes collection/album ID
+    
+    Returns:
+        List of track results from iTunes API
+    """
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                f"{ITUNES_API_BASE}/lookup",
+                params={
+                    "id": collection_id,
+                    "entity": "song",
+                    "limit": 200,
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+            results = data.get("results", [])
+            
+            # Filter to only tracks (skip the album result itself)
+            tracks = [r for r in results if r.get("wrapperType") == "track" and r.get("kind") == "song"]
+            return tracks
+        except httpx.HTTPError as e:
+            print(f"Error calling iTunes API: {e}")
+            return []
+
+
+def extract_track_fields(result: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract relevant fields from iTunes API track result
+    
+    Args:
+        result: Raw track result from iTunes API
+    
+    Returns:
+        Dictionary with extracted track fields
+    """
+    # Convert duration from milliseconds
+    duration_ms = result.get("trackTimeMillis", 0)
+    
+    return {
+        "artist_id": str(result.get("artistId", "")),
+        "collection_id": str(result.get("collectionId", "")),
+        "track_id": str(result.get("trackId", "")),
+        "track_number": result.get("trackNumber", 0),
+        "track_name": result.get("trackName", ""),
+        "track_duration_ms": duration_ms,
+        "preview_url": result.get("previewUrl", ""),
+        "is_playable": result.get("isPlayable", True),
+        "explicit": result.get("explicit", False),
+        "primary_genre": result.get("primaryGenreName", "Unknown"),
+        "release_date": result.get("releaseDate", ""),
+    }

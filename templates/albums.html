@@ -211,6 +211,183 @@
             margin-bottom: 20px;
         }
         
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+        
+        .progress-container.active {
+            display: block;
+        }
+        
+        .progress-label {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .tracks-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .tracks-modal.active {
+            display: flex;
+        }
+        
+        .tracks-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .tracks-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .tracks-modal-header h2 {
+            color: #333;
+            font-size: 20px;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-button:hover {
+            color: #333;
+        }
+        
+        .tracks-list {
+            list-style: none;
+        }
+        
+        .track-item {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .track-item:last-child {
+            border-bottom: none;
+        }
+        
+        .track-info {
+            flex: 1;
+        }
+        
+        .track-number {
+            color: #999;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .track-name {
+            color: #333;
+            font-weight: 600;
+            margin: 5px 0;
+        }
+        
+        .track-duration {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .track-preview {
+            margin-left: 10px;
+        }
+        
+        .preview-button {
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        .preview-button:hover {
+            background: #764ba2;
+        }
+        
+        .preview-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .view-tracks-button {
+            flex: 1;
+            padding: 8px 12px;
+            background: #764ba2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        
+        .view-tracks-button:hover {
+            background: #5a3a7a;
+        }
+        
+        .view-tracks-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -250,6 +427,13 @@
                 <p>Loading albums...</p>
             </div>
             
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-label" id="progressLabel">Collecting track data...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            
             <div id="albumsContent" style="display: none;">
                 <p class="info-text" id="albumsInfo"></p>
                 <div class="albums-grid" id="albumsGrid"></div>
@@ -261,9 +445,20 @@
         </div>
     </div>
     
+    <div class="tracks-modal" id="tracksModal">
+        <div class="tracks-modal-content">
+            <div class="tracks-modal-header">
+                <h2 id="tracksModalTitle">Album Tracks</h2>
+                <button class="close-button" onclick="closeTracksModal()">×</button>
+            </div>
+            <ul class="tracks-list" id="tracksList"></ul>
+        </div>
+    </div>
+    
     <script>
         let artistId = null;
         let artistName = null;
+        let currentAlbums = [];
         
         window.addEventListener('DOMContentLoaded', async () => {
             artistId = sessionStorage.getItem('selectedArtistId');
@@ -306,6 +501,7 @@
                 }
                 
                 const data = await response.json();
+                currentAlbums = data.albums || [];
                 displayAlbums(data);
             } catch (error) {
                 showError(`Error loading albums: ${error.message}`);
@@ -348,8 +544,9 @@
                         <div class="album-meta">Released: ${releaseDate}</div>
                         <div class="album-tracks">🎵 ${album.track_count} tracks</div>
                         <div class="album-actions">
+                            <button class="view-tracks-button" onclick="viewTracks('${album.collection_id}', '${escapeHtml(album.collection_name).replace(/'/g, "\\'")}')">View Tracks</button>
                             ${album.collection_view_url ? 
-                                `<a href="${album.collection_view_url}" target="_blank" class="album-link">View on iTunes</a>` : 
+                                `<a href="${album.collection_view_url}" target="_blank" class="album-link">iTunes</a>` : 
                                 ''
                             }
                         </div>
@@ -360,6 +557,107 @@
             });
             
             albumsContent.style.display = 'block';
+        }
+        
+        async function viewTracks(collectionId, collectionName) {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressLabel = document.getElementById('progressLabel');
+            
+            progressContainer.classList.add('active');
+            progressFill.style.width = '0%';
+            
+            try {
+                // Simulate progress while fetching
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    if (progress < 90) {
+                        progress += Math.random() * 30;
+                        progressFill.style.width = Math.min(progress, 90) + '%';
+                    }
+                }, 100);
+                
+                progressLabel.textContent = `Collecting track data from "${collectionName}"...`;
+                
+                const response = await fetch(`/api/collect-album-tracks/${artistId}/${collectionId}`, {
+                    method: 'POST',
+                });
+                
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                setTimeout(() => {
+                    progressContainer.classList.remove('active');
+                    displayTracksModal(data);
+                }, 500);
+            } catch (error) {
+                progressContainer.classList.remove('active');
+                showError(`Error collecting tracks: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        function displayTracksModal(albumData) {
+            const tracksModal = document.getElementById('tracksModal');
+            const tracksModalTitle = document.getElementById('tracksModalTitle');
+            const tracksList = document.getElementById('tracksList');
+            
+            tracksModalTitle.textContent = `${escapeHtml(albumData.collection_name)} - ${albumData.total_tracks} Tracks`;
+            tracksList.innerHTML = '';
+            
+            if (!albumData.tracks || albumData.tracks.length === 0) {
+                tracksList.innerHTML = '<li style="padding: 20px; text-align: center; color: #999;">No tracks found</li>';
+            } else {
+                albumData.tracks.forEach(track => {
+                    const li = document.createElement('li');
+                    li.className = 'track-item';
+                    
+                    const duration = formatDuration(track.track_duration_ms);
+                    const explicit = track.explicit ? ' <span style="color: #c33; font-weight: 600;">E</span>' : '';
+                    
+                    li.innerHTML = `
+                        <div class="track-info">
+                            <div class="track-number">Track ${track.track_number}</div>
+                            <div class="track-name">${escapeHtml(track.track_name)}${explicit}</div>
+                            <div class="track-duration">
+                                ${duration} • ${escapeHtml(track.primary_genre)}
+                            </div>
+                        </div>
+                        ${track.preview_url ? 
+                            `<div class="track-preview">
+                                <button class="preview-button" onclick="playPreview('${track.preview_url}')">▶ Preview</button>
+                            </div>` : 
+                            ''
+                        }
+                    `;
+                    
+                    tracksList.appendChild(li);
+                });
+            }
+            
+            tracksModal.classList.add('active');
+        }
+        
+        function closeTracksModal() {
+            const tracksModal = document.getElementById('tracksModal');
+            tracksModal.classList.remove('active');
+        }
+        
+        function playPreview(url) {
+            const audio = new Audio(url);
+            audio.play();
+        }
+        
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
         }
         
         function goBack() {
