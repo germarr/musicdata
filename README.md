@@ -10,11 +10,13 @@ A FastAPI application that allows users to search for artists using the iTunes A
 - 💾 Persistent SQLite database with SQLModel ORM
 - 🍪 User sessions with HTTP-only cookies
 - 📜 Search history per user session
-- 🎼 **Browse albums by artist** with artwork gallery
+- 🎼 **Browse albums by artist** with artwork gallery (up to 150 albums)
 - 🎵 **Collect detailed track metadata** from albums with progress tracking
 - 📚 **Dedicated Collected Artists page** with easy management
 - 🎧 **Preview tracks** with built-in audio player
 - 🧭 **Navigation bar** for easy access between pages
+- 📊 **Per-artist metrics** showing tracks, albums, and average song duration
+- 📈 **Global metrics dashboard** with comprehensive statistics
 - 📱 Responsive web interface
 - ⚡ Real-time AJAX search without page reload
 
@@ -253,7 +255,7 @@ Get all artists whose tracks have been collected.
 ```
 
 ### `GET /api/artists-with-track-counts`
-Get all artists with their collected track counts and album counts.
+Get all artists with their collected track counts and albums with global metrics.
 
 **Response:**
 ```json
@@ -268,12 +270,14 @@ Get all artists with their collected track counts and album counts.
     }
   ],
   "total_artists": 5,
-  "total_tracks": 487
+  "total_tracks": 487,
+  "total_albums": 42,
+  "avg_duration_ms": 220000
 }
 ```
 
 ### `GET /api/tracks/{artist_id}`
-Get all tracks for a specific artist grouped by album with album metadata and artwork.
+Get all tracks for a specific artist grouped by album with album metadata, artwork, and artist-specific metrics.
 
 **Response:**
 ```json
@@ -298,7 +302,9 @@ Get all tracks for a specific artist grouped by album with album metadata and ar
       ]
     }
   ],
-  "total_tracks": 156
+  "total_tracks": 156,
+  "total_albums": 12,
+  "avg_duration_ms": 215000
 }
 ```
 
@@ -359,7 +365,14 @@ Collect and store all detailed tracks from all albums for an artist with dedupli
 ### 5. Collected Tracks Dashboard
 - View all collected tracks organized by artist and album
 - Display album artwork (600px resolution) and full album names
-- Metrics showing total artists, total tracks, and average tracks per artist
+- **Global metrics** showing:
+  - Total artists, total tracks, total albums
+  - Average tracks per artist
+  - Average song duration across all collected music
+- **Per-artist metrics** showing:
+  - Track count for selected artist
+  - Album count for selected artist
+  - Average song duration for selected artist
 - Filter tracks by album
 - See track details (number, duration, genre, explicit flag)
 
@@ -379,6 +392,7 @@ Collect and store all detailed tracks from all albums for an artist with dedupli
 - Album grid gallery with hover effects
 - Track modal with smooth animations
 - Album artwork display in tracks table
+- Metrics cards for global and per-artist statistics
 - Loading spinners and progress bars
 - Error messages for user feedback
 - Mobile-friendly layout
