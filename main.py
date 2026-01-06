@@ -408,6 +408,131 @@ async def collect_album_tracks(artist_id: str, collection_id: str, db: Session =
     )
 
 
+@app.post("/api/collect-all-artist-tracks/{artist_id}")
+async def collect_all_artist_tracks(artist_id: str, db: Session = Depends(get_session)):
+    """
+    Collect tracks from ALL albums for an artist
+    Skips tracks already in database (by track_id)
+    Returns progress information and summary
+    """
+    try:
+        # Fetch all albums for this artist
+        albums = await search_albums_by_artist(int(artist_id), limit=50)
+        
+        if not albums:
+            return {
+                "artist_id": artist_id,
+                "total_albums": 0,
+                "total_tracks_collected": 0,
+                "albums": [],
+            }
+        
+        # Get artist name from first album
+        artist_name = albums[0].get("artistName", "")
+        
+        # Get or create artist cache
+        get_or_create_artist_cache(db, artist_id, artist_name)
+        
+        # Filter to only album collections
+        album_collections = [
+            a for a in albums 
+            if a.get("wrapperType") == "collection" and a.get("collectionType") == "Album"
+        ]
+        
+        # Collect tracks from all albums
+        collected_albums = []
+        total_tracks_new = 0
+        
+        for idx, album in enumerate(album_collections):
+            collection_id = album.get("collectionId")
+            
+            try:
+                # Fetch tracks for this album
+                tracks_data = await get_album_tracks(collection_id)
+                
+                if not tracks_data:
+                    collected_albums.append({
+                        "collection_id": str(collection_id),
+                        "collection_name": album.get("collectionName", ""),
+                        "new_tracks": 0,
+                        "skipped_tracks": 0,
+                    })
+                    continue
+                
+                new_tracks_count = 0
+                skipped_tracks_count = 0
+                
+                # Process each track
+                for track_data in tracks_data:
+                    track_id = str(track_data.get("trackId", ""))
+                    
+                    # Check if track already exists
+                    existing = db.exec(
+                        select(Track).where(Track.track_id == track_id)
+                    ).first()
+                    
+                    if existing:
+                        skipped_tracks_count += 1
+                        continue
+                    
+                    # Extract and store new track
+                    extracted = extract_track_fields(track_data)
+                    extracted.pop('artist_id', None)
+                    extracted.pop('collection_id', None)
+                    
+                    db_track = Track(
+                        artist_id=artist_id,
+                        collection_id=str(collection_id),
+                        **extracted,
+                    )
+                    db.add(db_track)
+                    new_tracks_count += 1
+                    total_tracks_new += 1
+                    
+                    # Rate limiting
+                    await asyncio.sleep(0.05)
+                
+                db.commit()
+                
+                collected_albums.append({
+                    "collection_id": str(collection_id),
+                    "collection_name": album.get("collectionName", ""),
+                    "new_tracks": new_tracks_count,
+                    "skipped_tracks": skipped_tracks_count,
+                })
+                
+            except Exception as e:
+                print(f"Error collecting tracks from album {collection_id}: {e}")
+                continue
+        
+        # Mark artist as fully collected
+        statement = select(ArtistCache).where(ArtistCache.artist_id == artist_id)
+        cache = db.exec(statement).first()
+        if cache:
+            cache.tracks_collected = True
+            cache.updated_at = datetime.utcnow()
+            db.add(cache)
+            db.commit()
+        
+        return {
+            "artist_id": artist_id,
+            "artist_name": artist_name,
+            "total_albums": len(album_collections),
+            "total_tracks_collected": total_tracks_new,
+            "albums": collected_albums,
+        }
+        
+    except Exception as e:
+        print(f"Error in collect_all_artist_tracks: {e}")
+        return {
+            "artist_id": artist_id,
+            "error": str(e),
+            "total_albums": 0,
+            "total_tracks_collected": 0,
+            "albums": [],
+        }
+
+
 @app.get("/api/cached-artists")
 async def get_all_cached_artists(db: Session = Depends(get_session)) -> CachedArtistsResponse:
     """Get all artists with collected track data"""

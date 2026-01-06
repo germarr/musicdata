@@ -565,24 +565,63 @@
         
         async function loadAlbums() {
             const loading = document.getElementById('loading');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressLabel = document.getElementById('progressLabel');
+            const progressFill = document.getElementById('progressFill');
             const albumsContent = document.getElementById('albumsContent');
             const noAlbums = document.getElementById('noAlbums');
             
             loading.classList.add('active');
             albumsContent.style.display = 'none';
             noAlbums.style.display = 'none';
+            progressContainer.classList.remove('active');
             
             try {
-                const response = await fetch(`/api/albums/${artistId}`);
+                // First, fetch albums list
+                const albumsResponse = await fetch(`/api/albums/${artistId}`);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                if (!albumsResponse.ok) {
+                    throw new Error(`HTTP ${albumsResponse.status}: ${albumsResponse.statusText}`);
                 }
                 
-                const data = await response.json();
-                currentAlbums = data.albums || [];
-                displayAlbums(data);
+                const albumsData = await albumsResponse.json();
+                currentAlbums = albumsData.albums || [];
+                
+                if (currentAlbums.length === 0) {
+                    noAlbums.style.display = 'block';
+                    loading.classList.remove('active');
+                    return;
+                }
+                
+                // Now auto-collect all tracks for this artist
+                loading.classList.remove('active');
+                progressContainer.classList.add('active');
+                progressLabel.textContent = `Collecting tracks from ${currentAlbums.length} album${currentAlbums.length !== 1 ? 's' : ''}...`;
+                progressFill.style.width = '0%';
+                
+                // Make the collection request
+                const collectResponse = await fetch(`/api/collect-all-artist-tracks/${artistId}`, {
+                    method: 'POST',
+                });
+                
+                if (!collectResponse.ok) {
+                    throw new Error(`HTTP ${collectResponse.status}: Track collection failed`);
+                }
+                
+                const collectData = await collectResponse.json();
+                
+                // Update progress to 100%
+                progressFill.style.width = '100%';
+                progressLabel.textContent = `Collection complete! (${collectData.total_tracks_collected} new tracks)`;
+                
+                // Wait a moment to show completion
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                progressContainer.classList.remove('active');
+                displayAlbums(albumsData);
+                
             } catch (error) {
+                progressContainer.classList.remove('active');
                 showError(`Error loading albums: ${error.message}`);
                 console.error(error);
             } finally {
