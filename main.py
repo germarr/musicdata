@@ -600,6 +600,8 @@ async def get_artist_all_tracks(artist_id: str, db: Session = Depends(get_sessio
         if track.collection_id not in albums_dict:
             albums_dict[track.collection_id] = {
                 "collection_id": track.collection_id,
+                "collection_name": track.collection_name or f"Album {track.collection_id}",
+                "artwork_url_600": track.artwork_url_600 or "",
                 "tracks": []
             }
         albums_dict[track.collection_id]["tracks"].append({

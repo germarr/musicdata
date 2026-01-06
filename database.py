@@ -75,6 +75,8 @@ class Track(SQLModel, table=True):
     explicit: bool = Field(default=False)
     primary_genre: str
     release_date: Optional[str] = None
+    collection_name: Optional[str] = None
+    artwork_url_600: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

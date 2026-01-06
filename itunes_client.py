@@ -182,6 +182,9 @@ def extract_track_fields(result: Dict[str, Any]) -> Dict[str, Any]:
     # Convert duration from milliseconds
     duration_ms = result.get("trackTimeMillis", 0)
     
+    # Get artwork URL, fallback to smaller size if 600px not available
+    artwork_url = result.get("artworkUrl600") or result.get("artworkUrl100") or ""
+    
     return {
         "artist_id": str(result.get("artistId", "")),
         "collection_id": str(result.get("collectionId", "")),
@@ -194,4 +197,6 @@ def extract_track_fields(result: Dict[str, Any]) -> Dict[str, Any]:
         "explicit": result.get("explicit", False),
         "primary_genre": result.get("primaryGenreName", "Unknown"),
         "release_date": result.get("releaseDate", ""),
+        "collection_name": result.get("collectionName", ""),
+        "artwork_url_600": artwork_url,
     }

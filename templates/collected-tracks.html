@@ -329,12 +329,50 @@
         
         .album-divider {
             background: #f5f5f5;
-            padding: 10px 15px;
+            padding: 15px;
             font-weight: 600;
             color: #333;
             border-bottom: 1px solid #ddd;
             border-top: 2px solid #667eea;
             margin-top: 20px;
+        }
+        
+        .album-divider-row {
+            height: auto;
+        }
+        
+        .album-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .album-art-thumbnail {
+            width: 60px;
+            height: 60px;
+            border-radius: 4px;
+            object-fit: cover;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .album-art-placeholder {
+            width: 60px;
+            height: 60px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .album-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            flex: 1;
         }
         
         @media (max-width: 768px) {
@@ -566,7 +604,7 @@
             albums.forEach(album => {
                 const opt = document.createElement('option');
                 opt.value = album.collection_id;
-                opt.textContent = `Album ${album.collection_id}`;
+                opt.textContent = album.collection_name || `Album ${album.collection_id}`;
                 select.appendChild(opt);
             });
             
@@ -585,9 +623,15 @@
                     return;
                 }
                 
-                // Album divider
+                // Album divider with artwork and name
                 const dividerRow = document.createElement('tr');
-                dividerRow.innerHTML = `<td colspan="6" class="album-divider">Album ${album.collection_id}</td>`;
+                const albumName = album.collection_name || `Album ${album.collection_id}`;
+                const albumArt = album.artwork_url_600 ? 
+                    `<img src="${album.artwork_url_600}" alt="${escapeHtml(albumName)}" class="album-art-thumbnail">` : 
+                    '<div class="album-art-placeholder">No Art</div>';
+                
+                dividerRow.innerHTML = `<td colspan="6" class="album-divider"><div class="album-header">${albumArt}<span class="album-name">${escapeHtml(albumName)}</span></div></td>`;
+                dividerRow.classList.add('album-divider-row');
                 tbody.appendChild(dividerRow);
                 
                 // Tracks
