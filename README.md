@@ -123,8 +123,10 @@ yolo_seg/
 
 4. **Browse Albums:**
    - Click "Check Albums" button in search results
+   - Albums sorted by release date (newest first)
    - View all albums by the artist with artwork
    - See track count and release date for each album
+   - Auto-collects track data from all albums
 
 5. **Collect Track Data:**
    - Click "View Tracks" on any album
@@ -354,9 +356,11 @@ Collect and store all detailed tracks from all albums for an artist with dedupli
 - Returns up to 200 results per search (deduped by artist ID)
 
 ### 2. Album Discovery
-- Fetches all albums for a selected artist
+- Fetches all albums for a selected artist (up to 150)
 - Displays album artwork, release date, track count
+- **Albums sorted by release date (newest first)**
 - Links to iTunes for each album
+- Auto-collects all album tracks with progress tracking
 
 ### 3. Track Collection with Caching
 - Fetches detailed metadata for all tracks in an album
